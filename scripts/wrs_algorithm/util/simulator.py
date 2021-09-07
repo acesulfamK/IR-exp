@@ -2,9 +2,11 @@
 
 import os
 import glob
+import subprocess
 import cv2
 import numpy as np
 import rospy
+import rospkg
 import ros_numpy
 import tf
 from sensor_msgs.msg import LaserScan, PointCloud2
@@ -37,7 +39,8 @@ def get_object_dict():
     """
 
     object_dict = {}
-    paths = glob.glob("/opt/ros/melodic/share/tmc_wrs_gazebo_worlds/models/ycb*")
+    rospack_path = rospkg.RosPack().get_path("tmc_wrs_gazebo_worlds")
+    paths = glob.glob(os.path.join(rospack_path, "models", "ycb*"))
     for path in paths:
         file = os.path.basename(path)
         object_dict[file[8:]] = file
