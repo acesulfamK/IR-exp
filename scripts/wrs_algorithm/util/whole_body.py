@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 
+from __future__ import print_function, division, absolute_import
 import moveit_commander
 from geometry_msgs.msg import PoseStamped
 
@@ -14,9 +15,11 @@ whole_body.set_workspace([-3.0, -3.0, 3.0, 3.0])
 
 
 def move_end_effector_pose(x, y, z, roll, pitch, yaw):
-    u"""ロボットを全身の逆運動学で制御する関数
+    """
+    ロボットを全身の逆運動学で制御する関数
 
-    引数：
+    Parameters
+    ----------
         x (float): エンドエフェクタの目標x値 [m]
         y (float): エンドエフェクタの目標y値 [m]
         z (float): エンドエフェクタの目標z値 [m]
@@ -24,7 +27,8 @@ def move_end_effector_pose(x, y, z, roll, pitch, yaw):
         pitch (float): エンドエフェクタの目標pitch値 [deg]
         yaw (float): エンドエフェクタの目標yaw値 [deg]
 
-    返り値:
+    Return
+    ------
         正しく動作すればTrue, そうでなければFalse
 
     """
@@ -52,9 +56,11 @@ arm = moveit_commander.MoveGroupCommander('arm')
 
 
 def move_to_neutral():
-    u"""ロボットをニュートラルの姿勢に移動
+    """
+    ロボットをニュートラルの姿勢に移動
 
-    返り値:
+    Return
+    ------
         正しく動作すればTrue, そうでなければFalse
 
     """
@@ -64,9 +70,11 @@ def move_to_neutral():
 
 
 def move_to_go():
-    u"""ロボットを初期姿勢に移動
+    """
+    ロボットを初期姿勢に移動
 
-    返り値:
+    Return
+    ------
         正しく動作すればTrue, そうでなければFalse
 
     """
@@ -80,12 +88,15 @@ head = moveit_commander.MoveGroupCommander("head")
 
 
 def move_head_tilt(v):
-    u"""ハンドを制御
+    """
+    ハンドを制御
 
-    引数:
+    Parameters
+    ----------
         v (float): 頭部の入力チルト角度 (マイナス:下向き、プラス:上向き)
 
-    返り値:
+    Return
+    ------
         正しく動作すればTrue, そうでなければFalse
 
     """

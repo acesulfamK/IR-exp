@@ -1,5 +1,9 @@
 # -*- coding: utf-8 -*-
 
+from __future__ import unicode_literals
+from __future__ import print_function
+from __future__ import division
+from __future__ import absolute_import
 import math
 import rospy
 import tf
@@ -8,9 +12,11 @@ from geometry_msgs.msg import Quaternion, TransformStamped
 
 
 def get_current_time_sec():
-    u"""現在時刻を返す関数
+    """
+    現在時刻を返す関数
 
-    戻り値:
+    Return
+    ------
         現在時刻 [s]
 
     """
@@ -18,14 +24,17 @@ def get_current_time_sec():
 
 
 def quaternion_from_euler(roll, pitch, yaw):
-    u"""オイラー角からクオータニオンに変換する関数
+    """
+    オイラー角からクオータニオンに変換する関数
 
-    引数：
+    Parameters
+    ----------
         roll (float): 入力roll値 [deg]
         pitch (float): 入力pitch値 [deg]
         yaw (float): 入力yaw値 [deg]
 
-    返り値:
+    Return
+    ------
         ロール、ピッチ、ヨーの順番で回転した場合のクオータニオン
 
     """
@@ -38,9 +47,11 @@ def quaternion_from_euler(roll, pitch, yaw):
 
 
 def get_relative_coordinate(parent, child):
-    u"""相対座標を取得する関数
+    """
+    相対座標を取得する関数
 
-    引数：
+    Parameters
+    ----------
         parent (str): 親の座標系
         child (str): 子の座標系
 

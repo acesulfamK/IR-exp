@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 
+from __future__ import print_function, division, absolute_import
 import moveit_commander
 import rospy
 
@@ -9,12 +10,15 @@ gripper = moveit_commander.MoveGroupCommander("gripper")
 
 
 def command(v):
-    u"""ハンドを制御
+    """
+    ハンドを制御
 
-    引数:
+    Parameters
+    ----------
         v (float): ハンドの開き具合 (0：閉じる、1:開く)
 
-    返り値:
+    Return
+    ------
         正しく動作すればTrue, そうでなければFalse
 
     """
