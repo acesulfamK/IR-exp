@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 
-from __future__ import print_function, division, absolute_import
+from __future__ import unicode_literals, print_function, division, absolute_import
 import moveit_commander
 from geometry_msgs.msg import PoseStamped
 
@@ -8,8 +8,8 @@ from wrs_algorithm.util.mathematics import quaternion_from_euler
 
 
 # moveitでの制御対象として全身制御を指定
-whole_body = moveit_commander.MoveGroupCommander("whole_body_light")
-# whole_body = moveit_commander.MoveGroupCommander("whole_body_weighted")
+whole_body = moveit_commander.MoveGroupCommander(str("whole_body_light"))
+# whole_body = moveit_commander.MoveGroupCommander(str("whole_body_weighted"))
 whole_body.allow_replanning(True)
 whole_body.set_workspace([-3.0, -3.0, 3.0, 3.0])
 
@@ -36,7 +36,7 @@ def move_end_effector_pose(x, y, z, roll, pitch, yaw):
     p = PoseStamped()
 
     # "map"座標を基準座標に指定
-    p.header.frame_id = "/map"
+    p.header.frame_id = str("/map")
 
     # エンドエフェクタの目標位置姿勢のx,y,z座標をセットします
     p.pose.position.x = x
@@ -52,7 +52,7 @@ def move_end_effector_pose(x, y, z, roll, pitch, yaw):
 
 
 # moveitでの制御対象としてアームを指定
-arm = moveit_commander.MoveGroupCommander('arm')
+arm = moveit_commander.MoveGroupCommander(str('arm'))
 
 
 def move_to_neutral():
@@ -65,7 +65,7 @@ def move_to_neutral():
 
     """
 
-    arm.set_named_target('neutral')
+    arm.set_named_target(str('neutral'))
     return arm.go()
 
 
@@ -79,12 +79,12 @@ def move_to_go():
 
     """
 
-    arm.set_named_target('go')
+    arm.set_named_target(str('go'))
     return arm.go()
 
 
 # moveitでの制御対象として頭部を指定
-head = moveit_commander.MoveGroupCommander("head")
+head = moveit_commander.MoveGroupCommander(str("head"))
 
 
 def move_head_tilt(v):
@@ -101,5 +101,5 @@ def move_head_tilt(v):
 
     """
 
-    head.set_joint_value_target("head_tilt_joint", v)
+    head.set_joint_value_target(str("head_tilt_joint"), v)
     return head.go()

@@ -1,12 +1,12 @@
 # -*- coding: utf-8 -*-
 
-from __future__ import print_function, division, absolute_import
+from __future__ import unicode_literals, print_function, division, absolute_import
 import moveit_commander
 import rospy
 
 
 # moveitでの制御対象としてハンドを指定
-gripper = moveit_commander.MoveGroupCommander("gripper")
+gripper = moveit_commander.MoveGroupCommander(str("gripper"))
 
 
 def command(v):
@@ -23,7 +23,7 @@ def command(v):
 
     """
 
-    gripper.set_joint_value_target("hand_motor_joint", v)
+    gripper.set_joint_value_target(str("hand_motor_joint"), v)
     success = gripper.go()
     rospy.sleep(6)
     return success

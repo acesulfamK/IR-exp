@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 
-from __future__ import print_function, division, absolute_import
+from __future__ import unicode_literals, print_function, division, absolute_import
 import math
 import rospy
 import actionlib
@@ -55,7 +55,7 @@ def go_abs(x, y, theta):
     goal = MoveBaseGoal()
 
     # "map"座標を基準座標に指定
-    goal.target_pose.header.frame_id = "map"
+    goal.target_pose.header.frame_id = str("map")
 
     # ゴールのx,y座標をセットします
     goal.target_pose.pose.position.x = x

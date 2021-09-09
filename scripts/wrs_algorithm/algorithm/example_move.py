@@ -1,9 +1,10 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-from __future__ import print_function, division, absolute_import
-import rospy
+from __future__ import unicode_literals, print_function, division, absolute_import
 import sys
+import traceback
+import rospy
 
 from wrs_algorithm.util import omni_base, whole_body, gripper, simulator, mathematics
 
@@ -15,6 +16,7 @@ if __name__=='__main__':
         whole_body.move_head_tilt(-0.7)
     except:
         rospy.logerr('fail to init')
+        traceback.print_exc()
         sys.exit()
 
     try:
@@ -24,6 +26,7 @@ if __name__=='__main__':
         omni_base.go_abs(1, 0.5, 90)
     except:
         rospy.logerr('fail to move')
+        traceback.print_exc()
         sys.exit()
 
     try:
@@ -41,6 +44,7 @@ if __name__=='__main__':
         whole_body.move_to_neutral()
     except:
         rospy.logerr('fail to grasp')
+        traceback.print_exc()
         sys.exit()
 
     try:
@@ -54,4 +58,5 @@ if __name__=='__main__':
         gripper.command(1)
     except:
         rospy.logerr('fail to move')
+        traceback.print_exc()
         sys.exit()
