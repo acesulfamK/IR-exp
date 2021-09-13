@@ -4,6 +4,13 @@
         "check_floor_c": [0.5, 0.5, 90],
         "check_floor_r": [1.0, 0.5, 90],
         "drawer": [0.35, 0.2, -90],
+        "bin_a": [2.4, 0.0, -90],
+        "bin_b": [2.6, 0.0, -90],
+        "standby_2a": [2.5, 1.85, 90],
+        "go_throw_2a": [2.0, 3.5, 90],
+        "shelf": [2.3, 3.9, 90],
+        "chair_a": [0.7, 2.8, 180],
+        "chair_b": [0.7, 3.9, 180],
         "home": [0, 0.2, 0]
     },
     "routes": {
@@ -12,6 +19,13 @@
             "check_floor_c",
             "check_floor_r",
             "drawer",
+            "bin_a",
+            "bin_b",
+            "standby_2a",
+            "go_throw_2a",
+            "shelf",
+            "chair_a",
+            "chair_b",
             "home"
         ]
     }

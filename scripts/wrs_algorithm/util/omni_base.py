@@ -4,6 +4,7 @@ from __future__ import unicode_literals, print_function, division, absolute_impo
 import math
 import rospy
 import actionlib
+from actionlib_msgs.msg import GoalStatus
 from geometry_msgs.msg import Twist
 from move_base_msgs.msg import MoveBaseAction, MoveBaseGoal
 
@@ -65,9 +66,12 @@ def go_abs(x, y, theta):
     goal.target_pose.pose.orientation = quaternion_from_euler(0, 0, theta)
 
     # ゴールを送信
+    rospy.logdebug("send goal to navclient. goal(x,y,theta) = (%.2f, %.2f, %.2f)", x, y, theta)
     navclient.send_goal(goal)
+    rospy.logdebug("waiting for result from navclient.")
     navclient.wait_for_result()
+    rospy.logdebug("get result from navclient.")
     state = navclient.get_state()
     # 成功すると、3が返ってくる
     # http://docs.ros.org/fuerte/api/actionlib_msgs/html/msg/GoalStatus.html
-    return True if state == 3 else False
+    return True if state == GoalStatus.SUCCEEDED else False
