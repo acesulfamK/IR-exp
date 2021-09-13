@@ -4,9 +4,11 @@
 from __future__ import unicode_literals, print_function, division, absolute_import
 import json
 import os
-from wrs_algorithm.util import omni_base, whole_body
 import rospy
 import rospkg
+from detector_msgs.msg import BBoxArray
+from detector_msgs.srv import SetTfFromBBox
+from wrs_algorithm.util import omni_base, whole_body
 
 class WrsMainController():
     """
@@ -16,6 +18,17 @@ class WrsMainController():
     def __init__(self):
         # load config file
         self.coordinates = self.load_json(self.get_path(["config", "coordinates.json"]))
+
+        # ROS通信関連の初期化
+        tf_from_bbox_srv_name = "set_tf_from_bbox"
+        rospy.wait_for_service(tf_from_bbox_srv_name)
+        self.tf_from_bbox_clt = rospy.ServiceProxy(
+            tf_from_bbox_srv_name, SetTfFromBBox)
+
+        obj_detection_name = "object_detection_result"
+        self._pcd_sub = rospy.Subscriber(
+            obj_detection_name, BBoxArray, callback=self.object_detection_cb)
+
 
     @staticmethod
     def get_path(pathes=[], package="wrs_algorithm"):
@@ -56,6 +69,12 @@ class WrsMainController():
         for wp_name in self.coordinates["routes"]["test"]:
             self.goto(wp_name)
             rospy.sleep(1)
+
+    def object_detection_cb(self, msg):
+        """
+        物体認識の結果を取得する
+        """
+
 
     def execute_task1(self):
         """
