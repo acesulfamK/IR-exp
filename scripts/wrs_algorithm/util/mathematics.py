@@ -41,31 +41,3 @@ def quaternion_from_euler(roll, pitch, yaw):
                                                  pitch / 180.0 * math.pi,
                                                  yaw / 180.0 * math.pi, 'rxyz')
     return Quaternion(q[0], q[1], q[2], q[3])
-
-
-def get_relative_coordinate(parent, child):
-    """
-    相対座標を取得する関数
-
-    Parameters
-    ----------
-        parent (str): 親の座標系
-        child (str): 子の座標系
-
-    """
-
-    tfBuffer = tf2_ros.Buffer()
-    listener = tf2_ros.TransformListener(tfBuffer)
-
-    trans = TransformStamped()
-    while not rospy.is_shutdown():
-        try:
-            # 4秒待機して各tfが存在すれば相対関係をセット
-            trans = tfBuffer.lookup_transform(parent, child,
-                                              rospy.Time().now(),
-                                              rospy.Duration(4.0))
-            break
-        except (tf2_ros.ExtrapolationException):
-            pass
-
-    return trans.transform

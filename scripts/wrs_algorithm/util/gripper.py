@@ -6,7 +6,7 @@ import rospy
 
 
 # moveitでの制御対象としてハンドを指定
-gripper = moveit_commander.MoveGroupCommander(str("gripper"))
+gripper_cmd = moveit_commander.MoveGroupCommander(str("gripper"))
 
 
 def command(v):
@@ -23,7 +23,7 @@ def command(v):
 
     """
 
-    gripper.set_joint_value_target(str("hand_motor_joint"), v)
-    success = gripper.go()
+    gripper_cmd.set_joint_value_target(str("hand_motor_joint"), v)
+    success = gripper_cmd.go()
     rospy.sleep(6)
     return success

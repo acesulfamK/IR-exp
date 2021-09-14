@@ -8,10 +8,10 @@ from wrs_algorithm.util.mathematics import quaternion_from_euler
 
 
 # moveitでの制御対象として全身制御を指定
-whole_body = moveit_commander.MoveGroupCommander(str("whole_body_light"))
-# whole_body = moveit_commander.MoveGroupCommander(str("whole_body_weighted"))
-whole_body.allow_replanning(True)
-whole_body.set_workspace([-3.0, -3.0, 3.0, 3.0])
+whole_body_cmd = moveit_commander.MoveGroupCommander(str("whole_body_light"))
+# whole_body_cmd = moveit_commander.MoveGroupCommander(str("whole_body_weighted"))
+whole_body_cmd.allow_replanning(True)
+whole_body_cmd.set_workspace([-3.0, -3.0, 3.0, 3.0])
 
 
 def move_end_effector_pose(x, y, z, roll, pitch, yaw):
@@ -47,12 +47,12 @@ def move_end_effector_pose(x, y, z, roll, pitch, yaw):
     p.pose.orientation = quaternion_from_euler(roll, pitch, yaw)
 
     # 目標位置姿勢をセット
-    whole_body.set_pose_target(p)
-    return whole_body.go()
+    whole_body_cmd.set_pose_target(p)
+    return whole_body_cmd.go()
 
 
 # moveitでの制御対象としてアームを指定
-arm = moveit_commander.MoveGroupCommander(str('arm'))
+arm_cmd = moveit_commander.MoveGroupCommander(str('arm'))
 
 
 def move_to_neutral():
@@ -65,8 +65,8 @@ def move_to_neutral():
 
     """
 
-    arm.set_named_target(str('neutral'))
-    return arm.go()
+    arm_cmd.set_named_target(str('neutral'))
+    return arm_cmd.go()
 
 
 def move_to_go():
@@ -79,12 +79,12 @@ def move_to_go():
 
     """
 
-    arm.set_named_target(str('go'))
-    return arm.go()
+    arm_cmd.set_named_target(str('go'))
+    return arm_cmd.go()
 
 
 # moveitでの制御対象として頭部を指定
-head = moveit_commander.MoveGroupCommander(str("head"))
+head_cmd = moveit_commander.MoveGroupCommander(str("head"))
 
 
 def move_head_tilt(v):
@@ -101,5 +101,5 @@ def move_head_tilt(v):
 
     """
 
-    head.set_joint_value_target(str("head_tilt_joint"), v)
-    return head.go()
+    head_cmd.set_joint_value_target(str("head_tilt_joint"), v)
+    return head_cmd.go()
