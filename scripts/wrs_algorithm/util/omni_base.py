@@ -63,7 +63,7 @@ def go_abs(x, y, theta):
     goal.target_pose.pose.position.y = y
 
     # 角度はクオータニオンという形式で与えます。そのため、オイラー角からクオータニオンに変換します
-    goal.target_pose.pose.orientation = quaternion_from_euler(0, 0, theta)
+    goal.target_pose.pose.orientation = quaternion_from_euler(theta, 0, 0)
 
     # ゴールを送信
     rospy.logdebug("send goal to navclient. goal(x,y,theta) = (%.2f, %.2f, %.2f)", x, y, theta)

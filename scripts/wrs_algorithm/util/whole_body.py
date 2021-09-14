@@ -14,7 +14,7 @@ whole_body_cmd.allow_replanning(True)
 whole_body_cmd.set_workspace([-3.0, -3.0, 3.0, 3.0])
 
 
-def move_end_effector_pose(x, y, z, roll, pitch, yaw):
+def move_end_effector_pose(x, y, z, yaw, pitch, roll):
     """
     ロボットを全身の逆運動学で制御する関数
 
@@ -23,9 +23,9 @@ def move_end_effector_pose(x, y, z, roll, pitch, yaw):
         x (float): エンドエフェクタの目標x値 [m]
         y (float): エンドエフェクタの目標y値 [m]
         z (float): エンドエフェクタの目標z値 [m]
-        roll (float): エンドエフェクタの目標roll値 [deg]
-        pitch (float): エンドエフェクタの目標pitch値 [deg]
         yaw (float): エンドエフェクタの目標yaw値 [deg]
+        pitch (float): エンドエフェクタの目標pitch値 [deg]
+        roll (float): エンドエフェクタの目標roll値 [deg]
 
     Return
     ------
@@ -44,7 +44,7 @@ def move_end_effector_pose(x, y, z, roll, pitch, yaw):
     p.pose.position.z = z
 
     # オイラー角をクオータニオンに変換します
-    p.pose.orientation = quaternion_from_euler(roll, pitch, yaw)
+    p.pose.orientation = quaternion_from_euler(yaw, pitch, roll)
 
     # 目標位置姿勢をセット
     whole_body_cmd.set_pose_target(p)

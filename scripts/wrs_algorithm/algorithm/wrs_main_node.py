@@ -181,8 +181,21 @@ class WrsMainController():
 
             # 把持
             gripper.command(1)
-            whole_body.move_end_effector_pose(grasp_pos.x, grasp_pos.y, grasp_pos.z + self.GRASP_READY, 180, 0, 90)
-            whole_body.move_end_effector_pose(grasp_pos.x, grasp_pos.y, grasp_pos.z, 180, 0, 90)
+            whole_body.move_end_effector_pose(grasp_pos.x, grasp_pos.y, grasp_pos.z + self.GRASP_READY, -90, 180, 0)
+            whole_body.move_end_effector_pose(grasp_pos.x, grasp_pos.y, grasp_pos.z, -90, 180, 0)
+            gripper.command(0)
+            whole_body.move_end_effector_pose(grasp_pos.x, grasp_pos.y, grasp_pos.z + self.GRASP_READY, -90, 180, 0)
+
+            # binに入れる
+            whole_body.move_to_go()
+            self.goto("bin_a")
+            whole_body.move_to_neutral()
+            whole_body.move_end_effector_pose(2.2, -0.6, 0.45, 90, -90, 0)
+            gripper.command(1)
+            rospy.sleep(5.0)
+            whole_body.move_to_neutral()
+
+
 
     def execute_task2a(self):
         """
