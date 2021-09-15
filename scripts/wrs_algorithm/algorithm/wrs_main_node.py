@@ -9,7 +9,7 @@ import rospy
 import rospkg
 import tf2_ros
 from detector_msgs.msg import BBox, BBoxArray
-from detector_msgs.srv import SetTransformFromBBox, SetTransformFromBBoxRequest
+from detector_msgs.srv import SetTransformFromBBox, SetTransformFromBBoxRequest, GetObjectDetection, GetObjectDetectionRequest
 from wrs_algorithm.util import omni_base, whole_body, gripper
 
 class WrsMainController():
@@ -21,10 +21,6 @@ class WrsMainController():
     GRASP_READY = 0.2
 
     def __init__(self):
-        # intialize variable
-        self.detected_obj = None
-        self.detected_obj_req_time = rospy.Time.now()
-
         # load config file
         self.coordinates = self.load_json(self.get_path(["config", "coordinates.json"]))
 
@@ -32,11 +28,12 @@ class WrsMainController():
         tf_from_bbox_srv_name = "set_tf_from_bbox"
         rospy.wait_for_service(tf_from_bbox_srv_name)
         self.tf_from_bbox_clt = rospy.ServiceProxy(
-            tf_from_bbox_srv_name, SetTfFromBBox)
+            tf_from_bbox_srv_name, SetTransformFromBBox)
 
-        obj_detection_name = "detection/bbox"
-        self.pcd_sub = rospy.Subscriber(
-            obj_detection_name, BBoxArray, callback=self.object_detection_cb)
+        obj_detection_name = "detection/get_object_detection"
+        rospy.wait_for_service(obj_detection_name)
+        self.detection_clt = rospy.ServiceProxy(
+            obj_detection_name, GetObjectDetection)
 
         self.tf_buffer = tf2_ros.Buffer()
         self.tf_listener = tf2_ros.TransformListener(self.tf_buffer)
@@ -97,21 +94,12 @@ class WrsMainController():
             self.goto(wp_name)
             rospy.sleep(1)
 
-    def object_detection_cb(self, msg):
-        """
-        物体認識の結果を取得する
-        """
-        if self.detected_obj is None and msg.header.stamp > self.detected_obj_req_time:
-            self.detected_obj = msg
-
-    def wait_until_get_latest_detection(self):
+    def get_latest_detection(self):
         """
         最新の認識結果が到着するまで待つ
         """
-        self.detected_obj_req_time = rospy.Time.now()
-        self.detected_obj = None
-        while self.detected_obj is None:
-            rospy.sleep(0.1)
+        res = self.detection_clt(GetObjectDetectionRequest())
+        return res.bboxes
 
     @classmethod
     def get_most_graspable_bbox(cls, obj_list):
@@ -166,15 +154,15 @@ class WrsMainController():
             self.goto("check_floor_r")
 
             # 物体検出結果から、把持するbboxを決定
-            self.wait_until_get_latest_detection()
-            grasp_bbox = self.get_most_graspable_bbox(self.detected_obj.bboxes)
+            detected_objs = self.get_latest_detection()
+            grasp_bbox = self.get_most_graspable_bbox(detected_objs.bboxes)
             if grasp_bbox is None:
                 rospy.logwarn("Cannot determine object to grasp. Aborted.")
                 continue
 
             # tfを生成して、座標を取得
             self.tf_from_bbox_clt.call(
-                SetTfFromBBoxRequest(bbox=grasp_bbox, frame=self.GRASP_TF_NAME))
+                SetTransformFromBBoxRequest(bbox=grasp_bbox, frame=self.GRASP_TF_NAME))
             rospy.sleep(1.0) # tfが安定するのを待つ
             grasp_pos = self.get_relative_coordinate("map", self.GRASP_TF_NAME).translation
             rospy.loginfo("move hand to (%.2f, %.2f, %.2f)", grasp_pos.x, grasp_pos.y, grasp_pos.z)
@@ -194,8 +182,6 @@ class WrsMainController():
             gripper.command(1)
             rospy.sleep(5.0)
             whole_body.move_to_neutral()
-
-
 
     def execute_task2a(self):
         """
