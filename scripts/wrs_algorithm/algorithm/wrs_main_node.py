@@ -9,7 +9,7 @@ import rospy
 import rospkg
 import tf2_ros
 from detector_msgs.msg import BBox, BBoxArray
-from detector_msgs.srv import SetTfFromBBox, SetTfFromBBoxRequest
+from detector_msgs.srv import SetTransformFromBBox, SetTransformFromBBoxRequest
 from wrs_algorithm.util import omni_base, whole_body, gripper
 
 class WrsMainController():
