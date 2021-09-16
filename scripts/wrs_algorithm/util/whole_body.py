@@ -1,15 +1,20 @@
 # -*- coding: utf-8 -*-
 
 from __future__ import unicode_literals, print_function, division, absolute_import
+import actionlib
 import moveit_commander
+import rospy
+from actionlib_msgs.msg import GoalStatus
+from control_msgs.msg import FollowJointTrajectoryAction, FollowJointTrajectoryGoal
 from geometry_msgs.msg import PoseStamped
+from trajectory_msgs.msg import JointTrajectory, JointTrajectoryPoint
 
 from wrs_algorithm.util.mathematics import quaternion_from_euler
 
 
 # moveitでの制御対象として全身制御を指定
-whole_body_cmd = moveit_commander.MoveGroupCommander(str("whole_body_light"))
-# whole_body_cmd = moveit_commander.MoveGroupCommander(str("whole_body_weighted"))
+# whole_body_cmd = moveit_commander.MoveGroupCommander(str("whole_body_light"))
+whole_body_cmd = moveit_commander.MoveGroupCommander(str("whole_body_weighted"))
 whole_body_cmd.allow_replanning(True)
 whole_body_cmd.set_workspace([-3.0, -3.0, 3.0, 3.0])
 
@@ -103,3 +108,69 @@ def move_head_tilt(v):
 
     head_cmd.set_joint_value_target(str("head_tilt_joint"), v)
     return head_cmd.go()
+
+
+def move_to_joint_positions(joints):
+    """
+    ハンドを制御
+
+    Parameters
+    ----------
+        joints (dictionary): 各関節値
+
+    Return
+    ------
+        正しく動作すればTrue, そうでなければFalse
+    """
+    ARM_JOINT_LIST = [
+        'arm_lift_joint', 'arm_flex_joint', 'arm_roll_joint',
+        'wrist_flex_joint', 'wrist_roll_joint']
+    HEAD_JOINT_LIST = ['head_pan_joint', 'head_tilt_joint']
+
+    # arm関節の制御
+    arm_traj, arm_cnt = _convert_to_ros_traj_msg(joints, ARM_JOINT_LIST)
+    if arm_cnt > 0:
+        arm_actionlib_name = '/hsrb/arm_trajectory_controller/follow_joint_trajectory'
+        arm_client = actionlib.SimpleActionClient(arm_actionlib_name, FollowJointTrajectoryAction)
+        arm_client.wait_for_server()
+        arm_client.send_goal(FollowJointTrajectoryGoal(trajectory=arm_traj))
+
+    # arm関節の制御
+    head_traj, head_cnt = _convert_to_ros_traj_msg(joints, HEAD_JOINT_LIST)
+    if head_cnt > 0:
+        head_actionlib_name = '/hsrb/head_trajectory_controller/follow_joint_trajectory'
+        head_client = actionlib.SimpleActionClient(head_actionlib_name, FollowJointTrajectoryAction)
+        head_client.wait_for_server()
+        head_client.send_goal(FollowJointTrajectoryGoal(trajectory=head_traj))
+
+    # actionサーバの結果を待つ
+    if arm_cnt > 0:
+        arm_client.wait_for_result()
+        arm_state = True if arm_client.get_result() == GoalStatus.SUCCEEDED else False
+    else:
+        arm_state = True
+
+    if head_cnt > 0:
+        head_client.wait_for_result()
+        head_state = True if head_client.get_result() == GoalStatus.SUCCEEDED else False
+    else:
+        head_state = True
+
+    return arm_state and head_state
+
+
+def _convert_to_ros_traj_msg(joints, truth_list):
+    """
+    dictionary形式の関節値リストをROSメッセージに変換する
+    """
+    traj = JointTrajectory()
+    point = JointTrajectoryPoint()
+    for name, val in joints.items():
+        if name in truth_list:
+            traj.joint_names.append(name)
+            point.positions.append(val)
+            point.velocities.append(0)
+    point.time_from_start = rospy.Time(1)
+    traj.points = [point]
+
+    return traj, len(traj.joint_names)

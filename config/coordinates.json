@@ -1,5 +1,6 @@
 {
     "positions": {
+        "tall_table": [-0.06, 1.0, 90],
         "check_floor_l": [0.0, 0.5, 90],
         "check_floor_c": [0.5, 0.5, 90],
         "check_floor_r": [1.0, 0.5, 90],
