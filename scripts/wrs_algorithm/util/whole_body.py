@@ -36,7 +36,7 @@ def move_end_effector_pose(x, y, z, yaw, pitch, roll):
     p = PoseStamped()
 
     # "map"座標を基準座標に指定
-    p.header.frame_id = str("/map")
+    p.header.frame_id = str("map")
 
     # エンドエフェクタの目標位置姿勢のx,y,z座標をセットします
     p.pose.position.x = x
