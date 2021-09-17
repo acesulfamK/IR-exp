@@ -24,8 +24,9 @@ class WrsMainController():
     GRASP_OBJECT_LIST = ["apple", "sports_ball", "cup"]
     IGNORE_LIST = ["dining table", "bench", "tv", "bed", "laptop", "person", "chair", "umbrella"]
     GRASP_TF_NAME = "object_grasping"
-    GRASP_READY = 0.2
-    HAND_PALM_OFFSET = 0.06
+    GRASP_BACK_SAFE = {"z": 0.05, "xy": 0.3}
+    GRASP_BACK = {"z": 0.05, "xy": 0.1}
+    HAND_PALM_OFFSET = 0.06 # hand_palm_linkは指の付け根なので、把持のために少しずらす必要がある
 
     def __init__(self):
         # configファイルの受信
@@ -90,7 +91,7 @@ class WrsMainController():
             rospy.loginfo("go to [%s](%.2f, %.2f, %.2f)", name, wp[0], wp[1], wp[2])
             return omni_base.go_abs(wp[0], wp[1], wp[2])
 
-        rospy.loginfo("unknown waypoint name [%s]", name)
+        rospy.logerr("unknown waypoint name [%s]", name)
         return False
 
     def change_pose(self, name):
@@ -101,7 +102,7 @@ class WrsMainController():
             rospy.loginfo("change pose to [%s]", name)
             return whole_body.move_to_joint_positions(self.poses[name])
 
-        rospy.loginfo("unknown pose name [%s]", name)
+        rospy.logerr("unknown pose name [%s]", name)
         return False
 
     def check_positions(self):
@@ -119,6 +120,16 @@ class WrsMainController():
         """
         res = self.detection_clt(GetObjectDetectionRequest())
         return res.bboxes
+
+    def get_grasp_coordinate(self, bbox):
+        """
+        BBox情報から把持座標を取得する
+        """
+        # BBox情報からtfを生成して、座標を取得
+        self.tf_from_bbox_clt.call(
+            SetTransformFromBBoxRequest(bbox=bbox, frame=self.GRASP_TF_NAME))
+        rospy.sleep(1.0) # tfが安定するのを待つ
+        return self.get_relative_coordinate("map", self.GRASP_TF_NAME).translation
 
     @classmethod
     def get_most_graspable_bbox(cls, obj_list):
@@ -161,6 +172,46 @@ class WrsMainController():
 
         return 1 / xy_diff + 2 * label_score
 
+    def grasp_from_side(self, pos_x, pos_y, pos_z, yaw, pitch, roll, preliminary="-y"):
+        """
+        把持の一連の動作を行う
+
+        Note
+        ----
+        - tall_tableに対しての予備動作を生成するときはpreliminary="-y"と設定することになる。
+        """
+        if preliminary not in ["+y", "-y", "+x", "-x"]:
+            raise RuntimeError("unnkown graps preliminary type [%s]", preliminary)
+
+        rospy.loginfo("move hand to grasp (%.2f, %.2f, %.2f)", pos_x, pos_y, pos_z)
+
+        grasp_back_safe = {"x": pos_x, "y": pos_y, "z": pos_z + self.GRASP_BACK["z"]}
+        grasp_back = {"x": pos_x, "y": pos_y, "z": pos_z + self.GRASP_BACK["z"]}
+        grasp_pos = {"x": pos_x, "y": pos_y, "z": pos_z}
+
+        if "+" in preliminary:
+            sign = 1
+        elif "-" in preliminary:
+            sign = -1
+
+        if "x" in preliminary:
+            grasp_back_safe["x"] += sign * self.GRASP_BACK_SAFE["xy"]
+            grasp_back["x"] += sign * self.GRASP_BACK["xy"]
+        elif "y" in preliminary:
+            grasp_back_safe["y"] += sign * self.GRASP_BACK_SAFE["xy"]
+            grasp_back["y"] += sign * self.GRASP_BACK["xy"]
+
+        gripper.command(1)
+        whole_body.move_end_effector_pose(
+            grasp_back_safe["x"], grasp_back_safe["y"], grasp_back_safe["z"], yaw, pitch, roll)
+        whole_body.move_end_effector_pose(
+            grasp_back["x"], grasp_back["y"], grasp_back["z"], yaw, pitch, roll)
+        whole_body.move_end_effector_pose(
+            grasp_pos["x"], grasp_pos["y"], grasp_pos["z"], yaw, pitch, roll)
+        gripper.command(0)
+        whole_body.move_end_effector_pose(
+            grasp_back_safe["x"], grasp_back_safe["y"], grasp_back_safe["z"], yaw, pitch, roll)
+
     def execute_task1(self):
         """
         task1を実行する
@@ -168,7 +219,7 @@ class WrsMainController():
         rospy.loginfo("#### start Task 1 ####")
         for _ in range(2):
             # 探索位置・姿勢に移動
-            whole_body.move_to_go()
+            self.change_pose("move_with_looking_floor")
             self.goto("tall_table")
             self.change_pose("look_at_tall_table")
             gripper.command(0)
@@ -180,44 +231,39 @@ class WrsMainController():
                 rospy.logwarn("Cannot determine object to grasp. Grasping is aborted.")
                 continue
 
-            # tfを生成して、座標を取得
-            self.tf_from_bbox_clt.call(
-                SetTransformFromBBoxRequest(bbox=grasp_bbox, frame=self.GRASP_TF_NAME))
-            rospy.sleep(1.0) # tfが安定するのを待つ
-            grasp_pos = self.get_relative_coordinate("map", self.GRASP_TF_NAME).translation
-            rospy.loginfo("move hand to (%.2f, %.2f, %.2f)", grasp_pos.x, grasp_pos.y, grasp_pos.z)
-
-            # 把持
-            whole_body.move_to_neutral()
-            gripper.command(1)
-            grasp_x = grasp_pos.x
-            grasp_y = grasp_pos.y - self.HAND_PALM_OFFSET
-            graps_z = grasp_pos.z
-            whole_body.move_end_effector_pose(grasp_x, grasp_y - self.GRASP_READY, graps_z, -90, -90, 0)
-            whole_body.move_end_effector_pose(grasp_x, grasp_y, graps_z, -90, -90, 0)
-            gripper.command(0)
-            whole_body.move_end_effector_pose(grasp_x, grasp_y, graps_z + self.GRASP_READY, -90, -90, 0)
+            # BBoxの3次元座標を取得して、その座標で把持する
+            grasp_pos = self.get_grasp_coordinate(grasp_bbox)
+            grasp_pos.y -= self.HAND_PALM_OFFSET
+            self.change_pose("grasp_on_tall_table")
+            self.grasp_from_side(grasp_pos.x, grasp_pos.y, grasp_pos.z, -90, -90, 0, "-y")
+            self.change_pose("all_neutral")
 
             # binに入れる
-            whole_body.move_to_go()
-            self.goto("bin_a")
-            whole_body.move_to_neutral()
+            self.change_pose("move_with_looking_floor")
+            self.goto("bin_a_place")
+            self.change_pose("all_neutral")
             self.change_pose("put_in_bin")
             gripper.command(1)
             rospy.sleep(5.0)
-            whole_body.move_to_neutral()
+            self.change_pose("all_neutral")
 
     def execute_task2a(self):
         """
         task2aを実行する
         """
         rospy.loginfo("#### start Task 2a ####")
-        whole_body.move_to_go()
+        self.change_pose("move_with_looking_floor")
         gripper.command(0)
-        whole_body.move_head_tilt(-1.0)
+        self.change_pose("look_at_near_floor")
         self.goto("standby_2a")
 
-        # 本来はここで障害物を取り除く処理が必要
+        detected_objs = self.get_latest_detection()
+        grasp_bbox = self.get_most_graspable_bbox(detected_objs.bboxes)
+        if grasp_bbox is not None:
+            # 本来はここで障害物を除去する
+            pass
+        else:
+            rospy.logwarn("Cannot find object to grasp. Grasping in task2a is aborted.")
 
         self.goto("go_throw_2a")
         whole_body.move_to_go()
@@ -227,8 +273,31 @@ class WrsMainController():
         task2bを実行する
         """
         rospy.loginfo("#### start Task 2b ####")
-        whole_body.move_head_tilt(-0.3)
+        self.change_pose("move_with_looking_floor")
         self.goto("shelf")
+        self.change_pose("look_at_shelf")
+
+        # 物体検出結果から、把持するbboxを決定
+        detected_objs = self.get_latest_detection()
+        grasp_bbox = self.get_most_graspable_bbox(detected_objs.bboxes)
+        if grasp_bbox is None:
+            rospy.logwarn("Cannot find object to grasp. task2b is aborted.")
+            return
+
+        # BBoxの3次元座標を取得して、その座標で把持する
+        grasp_pos = self.get_grasp_coordinate(grasp_bbox)
+        grasp_pos.y -= self.HAND_PALM_OFFSET
+        self.change_pose("grasp_on_shelf")
+        self.grasp_from_side(grasp_pos.x, grasp_pos.y, grasp_pos.z, -90, -90, 0, "-y")
+        self.change_pose("all_neutral")
+
+        # 椅子の前に持っていく
+        self.change_pose("move_with_looking_floor")
+        self.goto("chair_a")
+        self.change_pose("deliver_to_human")
+        rospy.sleep(10.0)
+        gripper.command(1)
+        self.change_pose("all_neutral")
 
     def run(self):
         """
@@ -237,7 +306,7 @@ class WrsMainController():
         self.change_pose("all_neutral")
         self.execute_task1()
         self.execute_task2a()
-        # self.execute_task2b()
+        self.execute_task2b()
 
 
 def main():
