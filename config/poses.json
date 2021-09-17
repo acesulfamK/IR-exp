@@ -17,7 +17,16 @@
         "head_tilt_joint": -0.6,
         "head_pan_joint": 0.0
     },
-    "grasp_on_tall_table": {
+    "look_at_long_table": {
+        "arm_lift_joint": 0.0,
+        "arm_flex_joint": 0.0,
+        "arm_roll_joint": -1.57,
+        "wrist_flex_joint": -1.57,
+        "wrist_roll_joint": 0.0,
+        "head_tilt_joint": -0.5,
+        "head_pan_joint": 0.0
+    },
+    "grasp_on_table": {
         "arm_lift_joint": 0.1,
         "arm_flex_joint": -0.8,
         "arm_roll_joint": 0.0,

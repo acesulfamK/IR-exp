@@ -230,11 +230,15 @@ class WrsMainController():
         task1を実行する
         """
         rospy.loginfo("#### start Task 1 ####")
-        for _ in range(2):
+        for idx_trial in range(3):
             # 探索位置・姿勢に移動
             self.change_pose("move_with_looking_floor")
-            self.goto("tall_table")
-            self.change_pose("look_at_tall_table")
+            if idx_trial < 2:
+                self.goto("tall_table")
+                self.change_pose("look_at_tall_table")
+            elif idx_trial < 3:
+                self.goto("long_table_r")
+                self.change_pose("look_at_long_table")
             gripper.command(0)
 
             # 物体検出結果から、把持するbboxを決定
@@ -247,7 +251,7 @@ class WrsMainController():
             # BBoxの3次元座標を取得して、その座標で把持する
             grasp_pos = self.get_grasp_coordinate(grasp_bbox)
             grasp_pos.y -= self.HAND_PALM_OFFSET
-            self.change_pose("grasp_on_tall_table")
+            self.change_pose("grasp_on_table")
             self.grasp_from_side(grasp_pos.x, grasp_pos.y, grasp_pos.z, -90, -90, 0, "-y")
             self.change_pose("all_neutral")
 
