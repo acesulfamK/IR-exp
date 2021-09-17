@@ -29,6 +29,9 @@ class WrsMainController():
     HAND_PALM_OFFSET = 0.06 # hand_palm_linkは指の付け根なので、把持のために少しずらす必要がある
 
     def __init__(self):
+        # 変数の初期化
+        self.instruction_list = []
+
         # configファイルの受信
         self.coordinates = self.load_json(self.get_path(["config", "coordinates.json"]))
         self.poses = self.load_json(self.get_path(["config", "poses.json"]))
@@ -46,6 +49,9 @@ class WrsMainController():
 
         self.tf_buffer = tf2_ros.Buffer()
         self.tf_listener = tf2_ros.TransformListener(self.tf_buffer)
+
+        self.instruction_sub = rospy.Subscriber(
+            "/message", String, self.instruction_cb, queue_size=10)
 
     @staticmethod
     def get_path(pathes=[], package="wrs_algorithm"):
@@ -65,6 +71,13 @@ class WrsMainController():
         """
         with open(path, "r") as json_file:
             return json.load(json_file)
+
+    def instruction_cb(self, msg):
+        """
+        指示分を受信する
+        """
+        rospy.loginfo("instruction received. [%s]", msg.data)
+        self.instruction_list.append(msg.data)
 
     def get_relative_coordinate(self, parent, child):
         """
@@ -273,31 +286,36 @@ class WrsMainController():
         task2bを実行する
         """
         rospy.loginfo("#### start Task 2b ####")
-        self.change_pose("move_with_looking_floor")
-        self.goto("shelf")
-        self.change_pose("look_at_shelf")
 
-        # 物体検出結果から、把持するbboxを決定
-        detected_objs = self.get_latest_detection()
-        grasp_bbox = self.get_most_graspable_bbox(detected_objs.bboxes)
-        if grasp_bbox is None:
-            rospy.logwarn("Cannot find object to grasp. task2b is aborted.")
-            return
+        for idx_trial in range(2):
+            self.change_pose("move_with_looking_floor")
+            self.goto("shelf")
+            self.change_pose("look_at_shelf")
 
-        # BBoxの3次元座標を取得して、その座標で把持する
-        grasp_pos = self.get_grasp_coordinate(grasp_bbox)
-        grasp_pos.y -= self.HAND_PALM_OFFSET
-        self.change_pose("grasp_on_shelf")
-        self.grasp_from_side(grasp_pos.x, grasp_pos.y, grasp_pos.z, -90, -90, 0, "-y")
-        self.change_pose("all_neutral")
+            # 物体検出結果から、把持するbboxを決定
+            detected_objs = self.get_latest_detection()
+            grasp_bbox = self.get_most_graspable_bbox(detected_objs.bboxes)
+            if grasp_bbox is None:
+                rospy.logwarn("Cannot find object to grasp. task2b is aborted.")
+                return
 
-        # 椅子の前に持っていく
-        self.change_pose("move_with_looking_floor")
-        self.goto("chair_a")
-        self.change_pose("deliver_to_human")
-        rospy.sleep(10.0)
-        gripper.command(1)
-        self.change_pose("all_neutral")
+            # BBoxの3次元座標を取得して、その座標で把持する
+            grasp_pos = self.get_grasp_coordinate(grasp_bbox)
+            grasp_pos.y -= self.HAND_PALM_OFFSET
+            self.change_pose("grasp_on_shelf")
+            self.grasp_from_side(grasp_pos.x, grasp_pos.y, grasp_pos.z, -90, -90, 0, "-y")
+            self.change_pose("all_neutral")
+
+            # 椅子の前に持っていく
+            self.change_pose("move_with_looking_floor")
+            if idx_trial == 0:
+                self.goto("chair_a")
+            elif idx_trial == 1:
+                self.goto("chair_b")
+            self.change_pose("deliver_to_human")
+            rospy.sleep(10.0)
+            gripper.command(1)
+            self.change_pose("all_neutral")
 
     def run(self):
         """
