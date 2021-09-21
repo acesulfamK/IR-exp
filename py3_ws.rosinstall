@@ -10,7 +10,7 @@ repositories:
   third-party/geometry2:
     type: git
     url: git@github.com:keio-smilab21/geometry2.git
-    version: melodic-devel
+    version: 0.6.7
   wrs_detector:
     type: git
     url: git@github.com:keio-smilab21/wrs_detector.git
