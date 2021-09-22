@@ -20,11 +20,16 @@
     },
     "routes": {
         "test": [
+            "tall_table",
+            "long_table_l",
+            "long_table_c",
+            "long_table_r",
             "check_floor_l",
             "check_floor_c",
             "check_floor_r",
             "drawer",
             "bin_a",
+            "bin_a_place",
             "bin_b",
             "standby_2a",
             "go_throw_2a",
