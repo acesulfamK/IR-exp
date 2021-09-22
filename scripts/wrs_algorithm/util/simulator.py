@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 
+from __future__ import unicode_literals, print_function, division, absolute_import
 import os
 import glob
 import subprocess
@@ -13,7 +14,8 @@ from sensor_msgs.msg import LaserScan, PointCloud2
 
 
 class Laser():
-    u"""レーザ情報を扱うクラス"""
+    """
+    レーザ情報を扱うクラス"""
 
     def __init__(self):
         # レーザースキャンのサブスクライバのコールバックに_laser_cbメソッドを登録
@@ -26,14 +28,16 @@ class Laser():
         self._scan_data = msg
 
     def get_data(self):
-        u"""レーザの値を取得する関数"""
+        """レーザの値を取得する関数"""
         return self._scan_data
 
 
 def get_object_dict():
-    u"""Gazeboに出現させる物体の辞書を返す関数
+    """
+    Gazeboに出現させる物体の辞書を返す関数
 
-    返り値:
+    Return
+    ------
         物体の辞書
 
     """
@@ -49,9 +53,11 @@ def get_object_dict():
 
 
 def get_object_list():
-    u"""Gazeboに出現させる物体のリストを返す関数
+    """
+    Gazeboに出現させる物体のリストを返す関数
 
-    返り値:
+    Return
+    ------
         物体のリスト
 
     """
@@ -65,7 +71,8 @@ def get_object_list():
 
 
 def put_object(name, x, y, z):
-    u"""Gazeboに物体を出現させる関数"""
+    """
+    Gazeboに物体を出現させる関数"""
 
     cmd = "rosrun gazebo_ros spawn_model -database " \
           + str(get_object_dict()[name]) \
@@ -77,9 +84,11 @@ def put_object(name, x, y, z):
 
 
 def delete_object(name):
-    u"""Gazeboの物体を消す関数
+    """
+    Gazeboの物体を消す関数
 
-    引数:
+    Parameters
+    ----------
         name (str): 物体の名前
 
     """
@@ -90,7 +99,8 @@ def delete_object(name):
 
 
 class RGBD():
-    u"""RGB-Dデータを扱うクラス"""
+    """
+    RGB-Dデータを扱うクラス"""
 
     def __init__(self):
         self._br = tf.TransformBroadcaster()
@@ -146,30 +156,30 @@ class RGBD():
             msg.header.frame_id)
 
     def get_image(self):
-        u"""画像を取得する関数"""
+        """画像を取得する関数"""
         return self._image_data
 
     def get_points(self):
-        u"""ポイントクラウドを取得する関数"""
+        """ポイントクラウドを取得する関数"""
         return self._points_data
 
     def get_h_image(self):
-        u"""色相画像を取得する関数"""
+        """色相画像を取得する関数"""
         return self._h_image
 
     def get_region(self):
-        u"""抽出領域の画像を取得する関数"""
+        """抽出領域の画像を取得する関数"""
         return self._region
 
     def get_xyz(self):
-        u"""抽出領域から計算されたxyzを取得する関数"""
+        """抽出領域から計算されたxyzを取得する関数"""
         return self._xyz
 
     def set_h(self, h_min, h_max):
-        u"""色相の閾値を設定する関数"""
+        """色相の閾値を設定する関数"""
         self._h_min = h_min
         self._h_max = h_max
 
     def set_coordinate_name(self, name):
-        u"""座標の名前を設定する関数"""
+        """座標の名前を設定する関数"""
         self._frame_name = name
