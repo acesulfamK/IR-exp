@@ -35,9 +35,9 @@ if __name__=='__main__':
         # 手を開く
         gripper.command(1)
         # 黄色のブロックに手を伸ばす（本来はブロックの座標は画像認識すべき）
-        whole_body.move_end_effector_pose(0.9, 1.5, 0.2, 180, 0, 90)
+        whole_body.move_end_effector_pose(0.9, 1.5, 0.2, -90, -180, 0)
         # 手を下げる
-        whole_body.move_end_effector_pose(0.9, 1.5, 0.08, 180, 0, 90)
+        whole_body.move_end_effector_pose(0.9, 1.5, 0.08, -90, -180, 0)
         # 手を閉じる
         gripper.command(0)
         # 把持用初期姿勢に遷移
