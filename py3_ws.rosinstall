@@ -2,11 +2,11 @@ repositories:
   detector_msgs:
     type: git
     url: git@github.com:keio-smilab21/detector_msgs.git
-    version: feature/initial_develop
+    version: master
   hsr_perception:
     type: git
     url: git@github.com:keio-smilab21/hsr_perception.git
-    version: feature/migrate_from_nedo_demo
+    version: master
   third-party/geometry2:
     type: git
     url: git@github.com:keio-smilab21/geometry2.git
@@ -14,4 +14,4 @@ repositories:
   wrs_detector:
     type: git
     url: git@github.com:keio-smilab21/wrs_detector.git
-    version: feature/initial_develop
+    version: master
