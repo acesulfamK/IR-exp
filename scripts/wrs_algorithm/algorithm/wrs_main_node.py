@@ -1,23 +1,24 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
+"""
+WRS環境内でロボットを動作させるためのメインプログラム
+"""
 
 from __future__ import unicode_literals, print_function, division, absolute_import
 import json
-import math
 import os
 import traceback
 import rospy
 import rospkg
 import tf2_ros
 from std_msgs.msg import String
-from detector_msgs.msg import BBox, BBoxArray
 from detector_msgs.srv import (
     SetTransformFromBBox, SetTransformFromBBoxRequest,
     GetObjectDetection, GetObjectDetectionRequest)
 from wrs_algorithm.util import omni_base, whole_body, gripper
 
 
-class WrsMainController():
+class WrsMainController(object):
     """
     WRSのシミュレーション環境内でタスクを実行するクラス
     """
@@ -26,7 +27,7 @@ class WrsMainController():
     GRASP_TF_NAME = "object_grasping"
     GRASP_BACK_SAFE = {"z": 0.05, "xy": 0.3}
     GRASP_BACK = {"z": 0.05, "xy": 0.1}
-    HAND_PALM_OFFSET = 0.06 # hand_palm_linkは指の付け根なので、把持のために少しずらす必要がある
+    HAND_PALM_OFFSET = 0.06  # hand_palm_linkは指の付け根なので、把持のために少しずらす必要がある
 
     def __init__(self):
         # 変数の初期化
@@ -54,12 +55,13 @@ class WrsMainController():
             "/message", String, self.instruction_cb, queue_size=10)
 
     @staticmethod
-    def get_path(pathes=[], package="wrs_algorithm"):
+    def get_path(pathes, package="wrs_algorithm"):
         """
-        ROSパッケージ名を指定して、ファイルを取得する
+        ROSパッケージ名とファイルまでのパスを指定して、ファイルのパスを取得する
         """
-        if len(pathes) == 0:
+        if not pathes:  # check if the list is empty
             rospy.logerr("Can NOT resolve file path.")
+            raise ValueError("You must specify the path to file.")
         pkg_path = rospkg.RosPack().get_path(package)
         path = os.path.join(*pathes)
         return os.path.join(pkg_path, path)
@@ -86,8 +88,8 @@ class WrsMainController():
         try:
             # 4秒待機して各tfが存在すれば相対関係をセット
             trans = self.tf_buffer.lookup_transform(parent, child,
-                                                rospy.Time.now(),
-                                                rospy.Duration(4.0))
+                                                    rospy.Time.now(),
+                                                    rospy.Duration(4.0))
             return trans.transform
         except (tf2_ros.LookupException, tf2_ros.ConnectivityException, tf2_ros.ExtrapolationException):
             log_str = "failed to get transform between [{}] and [{}]\n".format(parent, child)
@@ -100,9 +102,9 @@ class WrsMainController():
         waypoint名で指定された場所に移動する
         """
         if name in self.coordinates["positions"].keys():
-            wp = self.coordinates["positions"][name]
-            rospy.loginfo("go to [%s](%.2f, %.2f, %.2f)", name, wp[0], wp[1], wp[2])
-            return omni_base.go_abs(wp[0], wp[1], wp[2])
+            pos = self.coordinates["positions"][name]
+            rospy.loginfo("go to [%s](%.2f, %.2f, %.2f)", name, pos[0], pos[1], pos[2])
+            return omni_base.go_abs(pos[0], pos[1], pos[2])
 
         rospy.logerr("unknown waypoint name [%s]", name)
         return False
@@ -141,7 +143,7 @@ class WrsMainController():
         # BBox情報からtfを生成して、座標を取得
         self.tf_from_bbox_clt.call(
             SetTransformFromBBoxRequest(bbox=bbox, frame=self.GRASP_TF_NAME))
-        rospy.sleep(1.0) # tfが安定するのを待つ
+        rospy.sleep(1.0)  # tfが安定するのを待つ
         return self.get_relative_coordinate("map", self.GRASP_TF_NAME).translation
 
     @classmethod
@@ -154,7 +156,8 @@ class WrsMainController():
         extract_str = "detected object list\n"
         ignore_str = ""
         for obj in obj_list:
-            info_str = "{:<15}({:.2%}, {:3d}, {:3d}, {:3d}, {:3d})\n".format(obj.label, obj.score, obj.x, obj.y, obj.w, obj.h)
+            info_str = "{:<15}({:.2%}, {:3d}, {:3d}, {:3d}, {:3d})\n".format(
+                obj.label, obj.score, obj.x, obj.y, obj.w, obj.h)
             if obj.label not in cls.IGNORE_LIST:
                 score = cls.calc_score_bbox(obj)
                 extracted.append({"bbox": obj, "score": score})
@@ -166,7 +169,8 @@ class WrsMainController():
         # つかむべきかのscoreが一番高い物体を返す
         for obj_info in sorted(extracted, key=lambda x: x["score"], reverse=True):
             obj = obj_info["bbox"]
-            info_str = "{} ({:.2%}, {:3d}, {:3d}, {:3d}, {:3d})\n".format(obj.label, obj.score, obj.x, obj.y, obj.w, obj.h)
+            info_str = "{} ({:.2%}, {:3d}, {:3d}, {:3d}, {:3d})\n".format(
+                obj.label, obj.score, obj.x, obj.y, obj.w, obj.h)
             rospy.loginfo("selected bbox: " + info_str)
             return obj
 
@@ -194,7 +198,7 @@ class WrsMainController():
         - tall_tableに対しての予備動作を生成するときはpreliminary="-y"と設定することになる。
         """
         if preliminary not in ["+y", "-y", "+x", "-x"]:
-            raise RuntimeError("unnkown graps preliminary type [%s]", preliminary)
+            raise RuntimeError("unnkown graps preliminary type [{}]".format(preliminary))
 
         rospy.loginfo("move hand to grasp (%.2f, %.2f, %.2f)", pos_x, pos_y, pos_z)
 
@@ -332,6 +336,9 @@ class WrsMainController():
 
 
 def main():
+    """
+    WRS環境内でタスクを実行するためのメインノードを起動する
+    """
     rospy.init_node('main_controller')
     try:
         ctrl = WrsMainController()
@@ -349,5 +356,5 @@ def main():
         pass
 
 
-if __name__=='__main__':
+if __name__ == '__main__':
     main()

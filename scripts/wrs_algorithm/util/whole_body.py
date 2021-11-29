@@ -1,4 +1,7 @@
 # -*- coding: utf-8 -*-
+"""
+HSRの全身を制御するためのユーティリティモジュール
+"""
 
 from __future__ import unicode_literals, print_function, division, absolute_import
 import actionlib
@@ -13,10 +16,10 @@ from wrs_algorithm.util.mathematics import quaternion_from_euler
 
 
 # moveitでの制御対象として全身制御を指定
-# whole_body_cmd = moveit_commander.MoveGroupCommander(str("whole_body_light"))
-whole_body_cmd = moveit_commander.MoveGroupCommander(str("whole_body_weighted"))
-whole_body_cmd.allow_replanning(True)
-whole_body_cmd.set_workspace([-3.0, -3.0, 3.0, 3.0])
+# WHOLE_BODY_CMD = moveit_commander.MoveGroupCommander(str("whole_body_light"))
+WHOLE_BODY_CMD = moveit_commander.MoveGroupCommander(str("whole_body_weighted"))
+WHOLE_BODY_CMD.allow_replanning(True)
+WHOLE_BODY_CMD.set_workspace([-3.0, -3.0, 3.0, 3.0])
 
 
 def move_end_effector_pose(x, y, z, yaw, pitch, roll):
@@ -38,26 +41,26 @@ def move_end_effector_pose(x, y, z, yaw, pitch, roll):
 
     """
 
-    p = PoseStamped()
+    p_stamped = PoseStamped()
 
     # "map"座標を基準座標に指定
-    p.header.frame_id = str("map")
+    p_stamped.header.frame_id = str("map")
 
     # エンドエフェクタの目標位置姿勢のx,y,z座標をセットします
-    p.pose.position.x = x
-    p.pose.position.y = y
-    p.pose.position.z = z
+    p_stamped.pose.position.x = x
+    p_stamped.pose.position.y = y
+    p_stamped.pose.position.z = z
 
     # オイラー角をクオータニオンに変換します
-    p.pose.orientation = quaternion_from_euler(yaw, pitch, roll)
+    p_stamped.pose.orientation = quaternion_from_euler(yaw, pitch, roll)
 
     # 目標位置姿勢をセット
-    whole_body_cmd.set_pose_target(p)
-    return whole_body_cmd.go()
+    WHOLE_BODY_CMD.set_pose_target(p_stamped)
+    return WHOLE_BODY_CMD.go()
 
 
 # moveitでの制御対象としてアームを指定
-arm_cmd = moveit_commander.MoveGroupCommander(str('arm'))
+ARM_CMD = moveit_commander.MoveGroupCommander(str('arm'))
 
 
 def move_to_neutral():
@@ -70,8 +73,8 @@ def move_to_neutral():
 
     """
 
-    arm_cmd.set_named_target(str('neutral'))
-    return arm_cmd.go()
+    ARM_CMD.set_named_target(str('neutral'))
+    return ARM_CMD.go()
 
 
 def move_to_go():
@@ -84,21 +87,21 @@ def move_to_go():
 
     """
 
-    arm_cmd.set_named_target(str('go'))
-    return arm_cmd.go()
+    ARM_CMD.set_named_target(str('go'))
+    return ARM_CMD.go()
 
 
 # moveitでの制御対象として頭部を指定
-head_cmd = moveit_commander.MoveGroupCommander(str("head"))
+HEAD_CMD = moveit_commander.MoveGroupCommander(str("head"))
 
 
-def move_head_tilt(v):
+def move_head_tilt(vertical):
     """
     ハンドを制御
 
     Parameters
     ----------
-        v (float): 頭部の入力チルト角度 (マイナス:下向き、プラス:上向き)
+        vertical (float): 頭部の入力チルト角度 (マイナス:下向き、プラス:上向き)
 
     Return
     ------
@@ -106,8 +109,8 @@ def move_head_tilt(v):
 
     """
 
-    head_cmd.set_joint_value_target(str("head_tilt_joint"), v)
-    return head_cmd.go()
+    HEAD_CMD.set_joint_value_target(str("head_tilt_joint"), vertical)
+    return HEAD_CMD.go()
 
 
 def move_to_joint_positions(joints):
@@ -122,13 +125,13 @@ def move_to_joint_positions(joints):
     ------
         正しく動作すればTrue, そうでなければFalse
     """
-    ARM_JOINT_LIST = [
+    arm_joint_list = [
         'arm_lift_joint', 'arm_flex_joint', 'arm_roll_joint',
         'wrist_flex_joint', 'wrist_roll_joint']
-    HEAD_JOINT_LIST = ['head_pan_joint', 'head_tilt_joint']
+    head_joint_list = ['head_pan_joint', 'head_tilt_joint']
 
     # arm関節の制御
-    arm_traj, arm_cnt = _convert_to_ros_traj_msg(joints, ARM_JOINT_LIST)
+    arm_traj, arm_cnt = _convert_to_ros_traj_msg(joints, arm_joint_list)
     if arm_cnt > 0:
         arm_actionlib_name = '/hsrb/arm_trajectory_controller/follow_joint_trajectory'
         arm_client = actionlib.SimpleActionClient(arm_actionlib_name, FollowJointTrajectoryAction)
@@ -136,7 +139,7 @@ def move_to_joint_positions(joints):
         arm_client.send_goal(FollowJointTrajectoryGoal(trajectory=arm_traj))
 
     # arm関節の制御
-    head_traj, head_cnt = _convert_to_ros_traj_msg(joints, HEAD_JOINT_LIST)
+    head_traj, head_cnt = _convert_to_ros_traj_msg(joints, head_joint_list)
     if head_cnt > 0:
         head_actionlib_name = '/hsrb/head_trajectory_controller/follow_joint_trajectory'
         head_client = actionlib.SimpleActionClient(head_actionlib_name, FollowJointTrajectoryAction)
