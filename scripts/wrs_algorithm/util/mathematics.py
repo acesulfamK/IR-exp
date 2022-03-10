@@ -1,11 +1,13 @@
 # -*- coding: utf-8 -*-
+"""
+数学的な演算を行うユーティリティモジュール
+"""
 
 from __future__ import unicode_literals, print_function, division, absolute_import
 import math
 import rospy
 import tf
-import tf2_ros
-from geometry_msgs.msg import Quaternion, TransformStamped
+from geometry_msgs.msg import Quaternion
 
 
 def get_current_time_sec():
@@ -37,7 +39,7 @@ def quaternion_from_euler(yaw, pitch, roll):
     """
 
     # ロール、ピッチ、ヨーの順番で回転
-    q = tf.transformations.quaternion_from_euler(yaw / 180.0 * math.pi,
-                                                 pitch / 180.0 * math.pi,
-                                                 roll / 180.0 * math.pi, 'rzyx')
-    return Quaternion(q[0], q[1], q[2], q[3])
+    quat = tf.transformations.quaternion_from_euler(yaw / 180.0 * math.pi,
+                                                    pitch / 180.0 * math.pi,
+                                                    roll / 180.0 * math.pi, 'rzyx')
+    return Quaternion(quat[0], quat[1], quat[2], quat[3])
