@@ -1,9 +1,9 @@
 repositories:
   detector_msgs:
     type: git
-    url: git@github.com:keio-smilab21/detector_msgs.git
-    version: master
+    url: git@github.com:keio-smilab22/detector_msgs.git
+    version: product
   wrs_algorithm21:
     type: git
-    url: git@github.com:keio-smilab21/wrs_algorithm21.git
-    version: master
+    url: git@github.com:keio-smilab22/wrs_algorithm21.git
+    version: product

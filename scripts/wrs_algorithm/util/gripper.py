@@ -1,4 +1,7 @@
 # -*- coding: utf-8 -*-
+"""
+HSRのハンドを制御するためのユーティリティモジュール
+"""
 
 from __future__ import unicode_literals, print_function, division, absolute_import
 import moveit_commander
@@ -6,16 +9,16 @@ import rospy
 
 
 # moveitでの制御対象としてハンドを指定
-gripper_cmd = moveit_commander.MoveGroupCommander(str("gripper"))
+GRIPPER_CMD = moveit_commander.MoveGroupCommander(str("gripper"))
 
 
-def command(v):
+def command(value):
     """
     ハンドを制御
 
     Parameters
     ----------
-        v (float): ハンドの開き具合 (0：閉じる、1:開く)
+        value (float): ハンドの開き具合 (0：閉じる、1:開く)
 
     Return
     ------
@@ -23,7 +26,7 @@ def command(v):
 
     """
 
-    gripper_cmd.set_joint_value_target(str("hand_motor_joint"), v)
-    success = gripper_cmd.go()
+    GRIPPER_CMD.set_joint_value_target(str("hand_motor_joint"), value)
+    success = GRIPPER_CMD.go()
     rospy.sleep(6)
     return success

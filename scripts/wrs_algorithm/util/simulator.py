@@ -1,19 +1,21 @@
 # -*- coding: utf-8 -*-
-
+"""
+HSR simulator OSS用のユーティリティモジュール
+"""
 from __future__ import unicode_literals, print_function, division, absolute_import
 import os
 import glob
 import subprocess
-import cv2
 import numpy as np
 import rospy
 import rospkg
 import ros_numpy
 import tf
 from sensor_msgs.msg import LaserScan, PointCloud2
+import cv2
 
 
-class Laser():
+class Laser(object):
     """
     レーザ情報を扱うクラス"""
 
@@ -46,8 +48,8 @@ def get_object_dict():
     rospack_path = rospkg.RosPack().get_path("tmc_wrs_gazebo_worlds")
     paths = glob.glob(os.path.join(rospack_path, "models", "ycb*"))
     for path in paths:
-        file = os.path.basename(path)
-        object_dict[file[8:]] = file
+        file_ = os.path.basename(path)
+        object_dict[file_[8:]] = file_
 
     return object_dict
 
@@ -64,7 +66,7 @@ def get_object_list():
 
     object_list = get_object_dict().values()
     object_list.sort()
-    for i in range(len(object_list)):
+    for i, _ in enumerate(object_list):
         object_list[i] = object_list[i][8:]
 
     return object_list
@@ -72,7 +74,8 @@ def get_object_list():
 
 def put_object(name, x, y, z):
     """
-    Gazeboに物体を出現させる関数"""
+    Gazeboに物体を出現させる関数
+    """
 
     cmd = "rosrun gazebo_ros spawn_model -database " \
           + str(get_object_dict()[name]) \
@@ -98,7 +101,7 @@ def delete_object(name):
     subprocess.call(cmd)
 
 
-class RGBD():
+class RGBD(object):
     """
     RGB-Dデータを扱うクラス"""
 
@@ -138,7 +141,7 @@ class RGBD():
             return
 
         # 領域からxyzを計算する
-        (y_idx, x_idx) = np.where(self._region)
+        _, y_idx, x_idx = np.where(self._region)
         x = np.average(self._points_data['x'][y_idx, x_idx])
         y = np.average(self._points_data['y'][y_idx, x_idx])
         z = np.average(self._points_data['z'][y_idx, x_idx])

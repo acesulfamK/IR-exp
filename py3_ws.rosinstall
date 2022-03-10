@@ -1,17 +1,17 @@
 repositories:
   detector_msgs:
     type: git
-    url: git@github.com:keio-smilab21/detector_msgs.git
-    version: master
+    url: git@github.com:keio-smilab22/detector_msgs.git
+    version: product
   hsr_perception:
     type: git
-    url: git@github.com:keio-smilab21/hsr_perception.git
-    version: master
+    url: git@github.com:keio-smilab22/hsr_perception.git
+    version: product
   third-party/geometry2:
     type: git
-    url: git@github.com:keio-smilab21/geometry2.git
+    url: git@github.com:ros/geometry2.git
     version: 0.6.7
   wrs_detector:
     type: git
-    url: git@github.com:keio-smilab21/wrs_detector.git
-    version: master
+    url: git@github.com:keio-smilab22/wrs_detector.git
+    version: product
