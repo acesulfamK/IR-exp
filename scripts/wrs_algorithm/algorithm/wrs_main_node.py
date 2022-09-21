@@ -7,7 +7,9 @@ WRS環境内でロボットを動作させるためのメインプログラム
 from __future__ import unicode_literals, print_function, division, absolute_import
 import json
 import os
+from select import select
 import traceback
+from turtle import pos
 import rospy
 import rospkg
 import tf2_ros
@@ -108,6 +110,13 @@ class WrsMainController(object):
 
         rospy.logerr("unknown waypoint name [%s]", name)
         return False
+
+    def goto_raw(self, pos):
+        """
+        waypoint名で指定された場所に移動する
+        """
+        rospy.loginfo("go to [raw_pos](%.2f, %.2f, %.2f)", pos[0], pos[1], pos[2])
+        return omni_base.go_abs(pos[0], pos[1], pos[2])
 
     def change_pose(self, name):
         """
@@ -286,6 +295,8 @@ class WrsMainController(object):
         else:
             rospy.logwarn("Cannot find object to grasp. Grasping in task2a is aborted.")
 
+        self.execute_avoid_blocks()
+
         self.goto("go_throw_2a")
         whole_body.move_to_go()
 
@@ -325,15 +336,92 @@ class WrsMainController(object):
             gripper.command(1)
             self.change_pose("all_neutral")
 
+    def execute_avoid_blocks(self):
+        """blockを避けるためのメソッド
+        """
+        for i in range(3):
+            detected_objs = self.get_latest_detection()
+            bboxes = detected_objs.bboxes
+            pos_bboxes = [self.get_grasp_coordinate(bbox) for bbox in bboxes]
+            waypoint = self.select_next_waypoint(i, pos_bboxes)
+            rospy.loginfo(waypoint)
+            self.goto_raw(waypoint)
+
+    def select_next_waypoint(self,currentstp, bboxes):
+        """waypoints から近い場所にあるものを除外し、最適なwaypointを返す。
+        x座標を原点に近い方からa,b,cに分け、移動先を決定する
+        bboxesは get_grasp_coordinate 済みであること
+        """
+        waypoints = {
+            "x_a":[ [1.7, 2.5, 45], [1.7, 2.9, 45], [1.7, 3.1, 90] ],
+            "x_b":[ [2.1, 2.5, 90], [2.1, 2.9, 90], [2.1, 3.1, 90] ],
+            "x_c":[ [2.5, 2.5, 135], [2.5, 2.9, 135], [2.5, 3.1, 90] ]
+        }
+        # x_a,b,c のどの付近にオブジェクトがあるかを判定するためのしきい値
+        threshold_x = 1.9
+        
+        # ステータスを確認
+        can_go_to_x_a = True
+        can_go_to_x_b = True
+        can_go_to_x_c = True       
+        # 原点側からa,b,cの近いところを判定していく。近い箇所には近づけない
+        for bbox in bboxes:
+            pos_x = bbox.x
+            rospy.loginfo(bbox.x)
+            # NOTE 無視してよいオブジェクトもある。
+            if pos_x < threshold_x:
+                can_go_to_x_a = False
+                rospy.loginfo("can_go_to_x_a is False")
+                continue
+            elif pos_x < threshold_x + 0.4:
+                can_go_to_x_b = False
+                rospy.loginfo("can_go_to_x_b is False")
+                continue
+            elif pos_x < threshold_x + 0.8:
+                can_go_to_x_c = False
+                rospy.loginfo("can_go_to_x_c is False")
+
+        x_line = None   # x_a,b,cいずれかのリストが入る
+        # NOTE デフォルトは優先的にx_cに行く
+        if can_go_to_x_c:
+            x_line = waypoints["x_c"]
+            rospy.loginfo("select x_c line")
+        elif can_go_to_x_b:
+            x_line = waypoints["x_b"]
+            rospy.loginfo("select x_b line")
+        elif can_go_to_x_a:
+            x_line = waypoints["x_a"]
+            rospy.loginfo("select x_a line")
+        else:
+            # a,b,cいずれにも移動できない場合
+            x_line = waypoints["x_b"]
+            rospy.loginfo("select default")
+        
+        return x_line[currentstp]
+
     def run(self):
         """
         全てのタスクを実行する
         """
         self.change_pose("all_neutral")
-        self.execute_task1()
+        # self.execute_task1()
         self.execute_task2a()
-        self.execute_task2b()
+        # self.execute_task2b()
 
+    # def run(self):
+    #     """
+    #     全てのタスクを実行する
+    #     """
+    #     self.goto("standby_2a")
+    #     self.change_pose("move_with_looking_floor")
+    #     for i in range(3):
+    #         detected_objs = self.get_latest_detection()
+    #         bboxes = detected_objs.bboxes
+    #         pos_bboxes = [self.get_grasp_coordinate(bbox) for bbox in bboxes]
+    #         waypoint = self.select_next_waypoint(i, pos_bboxes)
+    #         rospy.loginfo(waypoint)
+    #         self.goto_raw(waypoint)
+    #     self.goto("shelf")
 
 def main():
     """
