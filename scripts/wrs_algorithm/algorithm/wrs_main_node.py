@@ -347,81 +347,73 @@ class WrsMainController(object):
             rospy.loginfo(waypoint)
             self.goto_raw(waypoint)
 
-    def select_next_waypoint(self,currentstp, bboxes):
+    def select_next_waypoint(self, currentstp, pos_bboxes):
         """waypoints から近い場所にあるものを除外し、最適なwaypointを返す。
-        x座標を原点に近い方からa,b,cに分け、移動先を決定する
-        bboxesは get_grasp_coordinate 済みであること
+        x座標を原点に近い方からa,b,cに分け、移動先を決定する(デフォルトは0.4刻み)
+        pos_bboxesは get_grasp_coordinate 済みであること
         """
         waypoints = {
-            "x_a":[ [1.7, 2.5, 45], [1.7, 2.9, 45], [1.7, 3.1, 90] ],
-            "x_b":[ [2.1, 2.5, 90], [2.1, 2.9, 90], [2.1, 3.1, 90] ],
-            "x_c":[ [2.5, 2.5, 135], [2.5, 2.9, 135], [2.5, 3.1, 90] ]
+            "x_a":[[1.7, 2.5, 45], [1.7, 2.9, 45], [1.7, 3.1, 90]],
+            "x_b":[[2.1, 2.5, 90], [2.1, 2.9, 90], [2.1, 3.1, 90]],
+            "x_c":[[2.5, 2.5, 135], [2.5, 2.9, 135], [2.5, 3.1, 90]]
         }
         # x_a,b,c のどの付近にオブジェクトがあるかを判定するためのしきい値
         threshold_x = 1.9
-        
-        # ステータスを確認
-        can_go_to_x_a = True
-        can_go_to_x_b = True
-        can_go_to_x_c = True       
+
+        # 移動可能な
+        is_x_a = True
+        is_x_b = True
+        is_x_c = True  
         # 原点側からa,b,cの近いところを判定していく。近い箇所には近づけない
-        for bbox in bboxes:
+        for bbox in pos_bboxes:
             pos_x = bbox.x
             rospy.loginfo(bbox.x)
             # NOTE 無視してよいオブジェクトもある。
             if pos_x < threshold_x:
-                can_go_to_x_a = False
+                is_x_a = False
                 rospy.loginfo("can_go_to_x_a is False")
                 continue
             elif pos_x < threshold_x + 0.4:
-                can_go_to_x_b = False
+                is_x_b = False
                 rospy.loginfo("can_go_to_x_b is False")
                 continue
             elif pos_x < threshold_x + 0.8:
-                can_go_to_x_c = False
+                is_x_c = False
                 rospy.loginfo("can_go_to_x_c is False")
 
         x_line = None   # x_a,b,cいずれかのリストが入る
         # NOTE デフォルトは優先的にx_cに行く
-        if can_go_to_x_c:
+        if is_x_c:
             x_line = waypoints["x_c"]
             rospy.loginfo("select x_c line")
-        elif can_go_to_x_b:
+        elif is_x_b:
             x_line = waypoints["x_b"]
             rospy.loginfo("select x_b line")
-        elif can_go_to_x_a:
+        elif is_x_a:
             x_line = waypoints["x_a"]
             rospy.loginfo("select x_a line")
         else:
             # a,b,cいずれにも移動できない場合
             x_line = waypoints["x_b"]
             rospy.loginfo("select default")
-        
-        return x_line[currentstp]
 
-    def run(self):
-        """
-        全てのタスクを実行する
-        """
-        self.change_pose("all_neutral")
-        # self.execute_task1()
-        self.execute_task2a()
-        # self.execute_task2b()
+        return x_line[currentstp]
 
     # def run(self):
     #     """
     #     全てのタスクを実行する
     #     """
-    #     self.goto("standby_2a")
-    #     self.change_pose("move_with_looking_floor")
-    #     for i in range(3):
-    #         detected_objs = self.get_latest_detection()
-    #         bboxes = detected_objs.bboxes
-    #         pos_bboxes = [self.get_grasp_coordinate(bbox) for bbox in bboxes]
-    #         waypoint = self.select_next_waypoint(i, pos_bboxes)
-    #         rospy.loginfo(waypoint)
-    #         self.goto_raw(waypoint)
-    #     self.goto("shelf")
+    #     self.change_pose("all_neutral")
+    #     # self.execute_task1()
+    #     self.execute_task2a()
+    #     # self.execute_task2b()
+
+    def run(self):
+        """
+        全てのタスクを実行する
+        """
+        # TODO ここでテストを実施テストパターンを追加
+        self.select_next_waypoint()
 
 def main():
     """
