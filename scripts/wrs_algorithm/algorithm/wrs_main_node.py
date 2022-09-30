@@ -277,6 +277,70 @@ class WrsMainController(object):
             rospy.sleep(5.0)
             self.change_pose("all_neutral")
 
+    # TODO error削除
+    # TODO placeタプル化
+    # TODO coordinate更新
+    # TODO pylintscore
+    # TODO 不要なコメント削除
+    
+    def execute_task1_seed_test(self):
+        """task1でスコア200点を目指し、かつオブジェクトとの衝突などを発生しないように実施する
+        """
+        rospy.loginfo("#### start Task 1 ####")
+        look_at = ""
+        places = [
+            # "tall_table",
+            "check_floor_l",
+            "check_floor_c",
+            # "check_floor_r",
+            # "tall_table_c",
+            # "long_table_l",
+            "long_table_c",
+            # "long_table_r"
+            ]
+        looks = [
+            # "move_with_looking_floor",
+            "move_with_looking_floor",
+            "move_with_looking_floor",
+            # "move_with_looking_floor",
+            # "look_at_tall_table",
+            # "look_at_tall_table",
+            "look_at_tall_table",
+            # "look_at_tall_table"
+            ]
+        for i in range(len(places)):
+            plc = places[i]
+            look_at = looks[i]
+
+            # 指定位置ですべてのオブジェクトがなくなるまで実施
+            limit_cnt = 2
+            for _ in range(limit_cnt):
+                # 移動と視線指示
+                self.goto(plc)
+                self.change_pose(look_at)
+                gripper.command(0)
+
+                # 把持対象の有無チェック
+                # NOTE オブジェクト自体を返して、Labelで判定できるようにしたほうが良い。
+                detected_objs = self.get_latest_detection()
+                graspable_obj = self.get_most_graspable_obj(detected_objs.bboxes)
+                if graspable_obj is None:
+                    rospy.logwarn("Cannot determine object to grasp. Grasping is aborted.")
+                    continue
+                label = graspable_obj["label"]
+                grasp_bbox = graspable_obj["bbox"]
+
+                # 把持対象がある場合は把持関数実施
+                grasp_pos = self.get_grasp_coordinate(grasp_bbox)
+                self.change_pose("grasp_on_table")
+                # 把持方法の決定
+                self.exe_graspable_method(grasp_pos, label)
+                self.change_pose("all_neutral")
+
+                # binに入れる
+                self.into_bin()
+
+
     def execute_task2a(self):
         """
         task2aを実行する
@@ -399,21 +463,14 @@ class WrsMainController(object):
 
         return x_line[currentstp]
 
-    # def run(self):
-    #     """
-    #     全てのタスクを実行する
-    #     """
-    #     self.change_pose("all_neutral")
-    #     # self.execute_task1()
-    #     self.execute_task2a()
-    #     # self.execute_task2b()
-
     def run(self):
         """
         全てのタスクを実行する
         """
-        # TODO ここでテストを実施テストパターンを追加
-        self.select_next_waypoint()
+        self.change_pose("all_neutral")
+        self.execute_task1()
+        self.execute_task2a()
+        self.execute_task2b()
 
 def main():
     """
