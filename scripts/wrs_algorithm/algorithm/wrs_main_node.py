@@ -295,7 +295,7 @@ class WrsMainController(object):
         把持可能後半の判定が優先される
         """
         method = None
-        graspable_y = 1.85 # これ以上奥は把持できない
+        graspable_y = 1.85  # これ以上奥は把持できない
         desk_y = 1.5
         desk_z = 0.35
 
@@ -450,9 +450,9 @@ class WrsMainController(object):
         pos_bboxesは get_grasp_coordinate 済みであること
         """
         waypoints = {
-            "xa":[[1.7, 2.5, 45], [1.7, 2.9, 45], [1.7, 3.1, 90]],
-            "xb":[[2.1, 2.5, 90], [2.1, 2.9, 90], [2.1, 3.1, 90]],
-            "xc":[[2.5, 2.5, 135], [2.5, 2.9, 135], [2.5, 3.1, 90]]
+            "xa": [[1.7, 2.5, 45], [1.7, 2.9, 45], [1.7, 3.1, 90]],
+            "xb": [[2.1, 2.5, 90], [2.1, 2.9, 90], [2.1, 3.1, 90]],
+            "xc": [[2.5, 2.5, 135], [2.5, 2.9, 135], [2.5, 3.1, 90]]
         }
         threshold_x = 1.9
 
@@ -503,6 +503,7 @@ class WrsMainController(object):
         self.execute_task1()
         self.execute_task2a()
         self.execute_task2b()
+
 
 def main():
     """
