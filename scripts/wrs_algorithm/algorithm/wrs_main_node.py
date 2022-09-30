@@ -7,7 +7,7 @@ WRS環境内でロボットを動作させるためのメインプログラム
 from __future__ import unicode_literals, print_function, division, absolute_import
 import json
 import os
-from select import select
+# from select import select
 import traceback
 from turtle import pos
 import rospy
@@ -187,6 +187,41 @@ class WrsMainController(object):
         return None
 
     @classmethod
+    def get_most_graspable_obj(cls, obj_list):
+        """把持すべきscoreが最も高い物体を返す。
+
+        Args:
+            obj_list (_type_): _description_
+
+        Returns:
+            _type_: _description_
+        """
+        extracted = []
+        extract_str = "detected object list\n"
+        ignore_str = ""
+        for obj in obj_list:
+            info_str = "{:<15}({:.2%}, {:3d}, {:3d}, {:3d}, {:3d})\n".format(
+                obj.label, obj.score, obj.x, obj.y, obj.w, obj.h)
+            if obj.label not in cls.IGNORE_LIST:
+                score = cls.calc_score_bbox(obj)
+                extracted.append({"bbox": obj, "score": score, "label": obj.label})
+                extract_str += "- extracted: {:07.3f} ".format(score) + info_str
+            else:
+                ignore_str += "- ignored  : " + info_str
+        rospy.loginfo(extract_str + ignore_str)
+
+        # つかむべきかのscoreが一番高い物体を返す
+        for obj_info in sorted(extracted, key=lambda x: x["score"], reverse=True):
+            obj = obj_info["bbox"]
+            info_str = "{} ({:.2%}, {:3d}, {:3d}, {:3d}, {:3d})\n".format(
+                obj.label, obj.score, obj.x, obj.y, obj.w, obj.h)
+            rospy.loginfo("selected bbox: " + info_str)
+            return obj_info
+
+        # objが一つもない場合は、Noneを返す
+        return None
+
+    @classmethod
     def calc_score_bbox(cls, bbox):
         """
         detector_msgs/BBoxのスコアを計算する
@@ -238,56 +273,76 @@ class WrsMainController(object):
         whole_body.move_end_effector_pose(
             grasp_back_safe["x"], grasp_back_safe["y"], grasp_back_safe["z"], yaw, pitch, roll)
 
+    def grasp_from_front_side(self, grasp_pos):
+        """正面把持を行う
+        ややアームを下に向けている
+        """
+        grasp_pos.y -= self.HAND_PALM_OFFSET
+        rospy.loginfo("grasp_from_front_side (%.2f, %.2f, %.2f)", grasp_pos.x, grasp_pos.y, grasp_pos.z)
+        self.grasp_from_side(grasp_pos.x, grasp_pos.y, grasp_pos.z, -90, -100, 0, "-y")
+
+    def grasp_from_upper_side(self, grasp_pos):
+        """上面から把持を行う
+        オブジェクトに寄るときは、y軸から近づく上面からは近づかない
+        """
+        # grasp_pos.z += self.HAND_PALM_OFFSET
+        grasp_pos.z += 0.075
+        rospy.loginfo("grasp_from_upper_side (%.2f, %.2f, %.2f)", grasp_pos.x, grasp_pos.y, grasp_pos.z)
+        self.grasp_from_side(grasp_pos.x, grasp_pos.y, grasp_pos.z, -90, -160, 0, "-y")
+
+    def exe_graspable_method(self, grasp_pos, label=""):
+        """posの位置によって把持方法を判定し実行する。
+        把持可能後半の判定が優先される
+        """
+        method = None
+        graspable_y = 1.85 # これ以上奥は把持できない
+        desk_y = 1.5
+        desk_z = 0.35
+
+        # 把持禁止判定
+        if (graspable_y < grasp_pos.y and desk_z > grasp_pos.z):
+            return False
+
+        # 机の下である条件を満たす場合
+        if (desk_y < grasp_pos.y and desk_z > grasp_pos.z):
+            method = self.grasp_from_front_side
+        else:
+            method = self.grasp_from_upper_side
+
+        # bowlの張り付き対策
+        if label in ["cup", "frisbee", "bowl"]:
+            method = self.grasp_from_front_side
+
+        method(grasp_pos)
+        return True
+
+    def put_in_place(self, place):
+        """指定場所に入れる事前位置に戻すまでのタスク
+        """
+        self.change_pose("move_with_looking_floor")
+        self.goto(place)
+        self.change_pose("all_neutral")
+        self.change_pose("put_in_bin")
+        gripper.command(1)
+        rospy.sleep(5.0)
+        self.change_pose("all_neutral")
+
+    def into_bin(self):
+        """箱に入れる事前位置に戻すまでのタスク
+        """
+        self.put_in_place("bin_a_place")
+
+    #TODO placeタプル化
+    #TODO coordinate更新
+    #TODO pylintscore
+    #TODO 不要なコメント削除
+
     def execute_task1(self):
-        """
-        task1を実行する
-        """
-        rospy.loginfo("#### start Task 1 ####")
-        for idx_trial in range(3):
-            # 探索位置・姿勢に移動
-            self.change_pose("move_with_looking_floor")
-            if idx_trial < 2:
-                self.goto("tall_table")
-                self.change_pose("look_at_tall_table")
-            elif idx_trial < 3:
-                self.goto("long_table_r")
-                self.change_pose("look_at_long_table")
-            gripper.command(0)
-
-            # 物体検出結果から、把持するbboxを決定
-            detected_objs = self.get_latest_detection()
-            grasp_bbox = self.get_most_graspable_bbox(detected_objs.bboxes)
-            if grasp_bbox is None:
-                rospy.logwarn("Cannot determine object to grasp. Grasping is aborted.")
-                continue
-
-            # BBoxの3次元座標を取得して、その座標で把持する
-            grasp_pos = self.get_grasp_coordinate(grasp_bbox)
-            grasp_pos.y -= self.HAND_PALM_OFFSET
-            self.change_pose("grasp_on_table")
-            self.grasp_from_side(grasp_pos.x, grasp_pos.y, grasp_pos.z, -90, -90, 0, "-y")
-            self.change_pose("all_neutral")
-
-            # binに入れる
-            self.change_pose("move_with_looking_floor")
-            self.goto("bin_a_place")
-            self.change_pose("all_neutral")
-            self.change_pose("put_in_bin")
-            gripper.command(1)
-            rospy.sleep(5.0)
-            self.change_pose("all_neutral")
-
-    # TODO error削除
-    # TODO placeタプル化
-    # TODO coordinate更新
-    # TODO pylintscore
-    # TODO 不要なコメント削除
-    
-    def execute_task1_seed_test(self):
         """task1でスコア200点を目指し、かつオブジェクトとの衝突などを発生しないように実施する
         """
         rospy.loginfo("#### start Task 1 ####")
         look_at = ""
+        #TODO タプル化
         places = [
             # "tall_table",
             "check_floor_l",
@@ -308,7 +363,8 @@ class WrsMainController(object):
             "look_at_tall_table",
             # "look_at_tall_table"
             ]
-        for i in range(len(places)):
+        #TODO 変更テストを実施せず実装しているがタプル化時に壊す
+        for i, _ in enumerate(places):
             plc = places[i]
             look_at = looks[i]
 
@@ -339,7 +395,6 @@ class WrsMainController(object):
 
                 # binに入れる
                 self.into_bin()
-
 
     def execute_task2a(self):
         """
@@ -427,7 +482,7 @@ class WrsMainController(object):
         # 移動可能な
         is_x_a = True
         is_x_b = True
-        is_x_c = True  
+        is_x_c = True
         # 原点側からa,b,cの近いところを判定していく。近い箇所には近づけない
         for bbox in pos_bboxes:
             pos_x = bbox.x
