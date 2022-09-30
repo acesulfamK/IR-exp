@@ -111,12 +111,12 @@ class WrsMainController(object):
         rospy.logerr("unknown waypoint name [%s]", name)
         return False
 
-    def goto_raw(self, pos):
+    def goto_raw(self, r_pos):
         """
         waypoint名で指定された場所に移動する
         """
-        rospy.loginfo("go to [raw_pos](%.2f, %.2f, %.2f)", pos[0], pos[1], pos[2])
-        return omni_base.go_abs(pos[0], pos[1], pos[2])
+        rospy.loginfo("go to [raw_pos](%.2f, %.2f, %.2f)", r_pos[0], r_pos[1], r_pos[2])
+        return omni_base.go_abs(r_pos[0], r_pos[1], r_pos[2])
 
     def change_pose(self, name):
         """
@@ -332,52 +332,30 @@ class WrsMainController(object):
         """
         self.put_in_place("bin_a_place")
 
-    #TODO placeタプル化
-    #TODO coordinate更新
-    #TODO pylintscore
-    #TODO 不要なコメント削除
-
     def execute_task1(self):
         """task1でスコア200点を目指し、かつオブジェクトとの衝突などを発生しないように実施する
         """
         rospy.loginfo("#### start Task 1 ####")
-        look_at = ""
-        #TODO タプル化
-        places = [
-            # "tall_table",
-            "check_floor_l",
-            "check_floor_c",
-            # "check_floor_r",
-            # "tall_table_c",
-            # "long_table_l",
-            "long_table_c",
-            # "long_table_r"
-            ]
-        looks = [
-            # "move_with_looking_floor",
-            "move_with_looking_floor",
-            "move_with_looking_floor",
-            # "move_with_looking_floor",
-            # "look_at_tall_table",
-            # "look_at_tall_table",
-            "look_at_tall_table",
-            # "look_at_tall_table"
-            ]
-        #TODO 変更テストを実施せず実装しているがタプル化時に壊す
-        for i, _ in enumerate(places):
-            plc = places[i]
-            look_at = looks[i]
+        hsr_position = [
+            ("check_floor_tall_table", "move_with_looking_floor"),
+            ("check_floor_l", "move_with_looking_floor"),
+            ("check_floor_c", "move_with_looking_floor"),
+            ("check_floor_r", "move_with_looking_floor"),
+            ("tall_table", "look_at_tall_table"),
+            ("long_table_l", "look_at_tall_table"),
+            ("long_table_c", "look_at_tall_table"),
+            ("long_table_r", "look_at_tall_table"),
+        ]
 
-            # 指定位置ですべてのオブジェクトがなくなるまで実施
-            limit_cnt = 2
-            for _ in range(limit_cnt):
+        detect_cnt = 2
+        for plc, look_at in hsr_position:
+            for _ in range(detect_cnt):
                 # 移動と視線指示
                 self.goto(plc)
                 self.change_pose(look_at)
                 gripper.command(0)
 
                 # 把持対象の有無チェック
-                # NOTE オブジェクト自体を返して、Labelで判定できるようにしたほうが良い。
                 detected_objs = self.get_latest_detection()
                 graspable_obj = self.get_most_graspable_obj(detected_objs.bboxes)
                 if graspable_obj is None:
@@ -389,7 +367,6 @@ class WrsMainController(object):
                 # 把持対象がある場合は把持関数実施
                 grasp_pos = self.get_grasp_coordinate(grasp_bbox)
                 self.change_pose("grasp_on_table")
-                # 把持方法の決定
                 self.exe_graspable_method(grasp_pos, label)
                 self.change_pose("all_neutral")
 
@@ -456,10 +433,11 @@ class WrsMainController(object):
             self.change_pose("all_neutral")
 
     def execute_avoid_blocks(self):
-        """blockを避けるためのメソッド
+        """blockを避ける
         """
         for i in range(3):
             detected_objs = self.get_latest_detection()
+            # 取得した物体の座標を算出
             bboxes = detected_objs.bboxes
             pos_bboxes = [self.get_grasp_coordinate(bbox) for bbox in bboxes]
             waypoint = self.select_next_waypoint(i, pos_bboxes)
@@ -468,53 +446,52 @@ class WrsMainController(object):
 
     def select_next_waypoint(self, currentstp, pos_bboxes):
         """waypoints から近い場所にあるものを除外し、最適なwaypointを返す。
-        x座標を原点に近い方からa,b,cに分け、移動先を決定する(デフォルトは0.4刻み)
+        x座標を原点に近い方からxa,xb,xcに分け、移動先を決定する(デフォルトは0.4刻み)
         pos_bboxesは get_grasp_coordinate 済みであること
         """
         waypoints = {
-            "x_a":[[1.7, 2.5, 45], [1.7, 2.9, 45], [1.7, 3.1, 90]],
-            "x_b":[[2.1, 2.5, 90], [2.1, 2.9, 90], [2.1, 3.1, 90]],
-            "x_c":[[2.5, 2.5, 135], [2.5, 2.9, 135], [2.5, 3.1, 90]]
+            "xa":[[1.7, 2.5, 45], [1.7, 2.9, 45], [1.7, 3.1, 90]],
+            "xb":[[2.1, 2.5, 90], [2.1, 2.9, 90], [2.1, 3.1, 90]],
+            "xc":[[2.5, 2.5, 135], [2.5, 2.9, 135], [2.5, 3.1, 90]]
         }
-        # x_a,b,c のどの付近にオブジェクトがあるかを判定するためのしきい値
         threshold_x = 1.9
 
-        # 移動可能な
-        is_x_a = True
-        is_x_b = True
-        is_x_c = True
-        # 原点側からa,b,cの近いところを判定していく。近い箇所には近づけない
+        # 原点側からxa,xb,xcのラインに近い場合は候補から削除
+        is_to_xa = True
+        is_to_xb = True
+        is_to_xc = True
         for bbox in pos_bboxes:
             pos_x = bbox.x
             rospy.loginfo(bbox.x)
-            # NOTE 無視してよいオブジェクトもある。
+            # NOTE ｙ座標次第で無視してよいオブジェクトもある。
             if pos_x < threshold_x:
-                is_x_a = False
-                rospy.loginfo("can_go_to_x_a is False")
+                is_to_xa = False
+                rospy.loginfo("is_to_xa=False")
                 continue
             elif pos_x < threshold_x + 0.4:
-                is_x_b = False
-                rospy.loginfo("can_go_to_x_b is False")
+                is_to_xb = False
+                rospy.loginfo("is_to_xb=False")
                 continue
             elif pos_x < threshold_x + 0.8:
-                is_x_c = False
-                rospy.loginfo("can_go_to_x_c is False")
+                is_to_xc = False
+                rospy.loginfo("is_to_xc=False")
+                continue
 
-        x_line = None   # x_a,b,cいずれかのリストが入る
-        # NOTE デフォルトは優先的にx_cに行く
-        if is_x_c:
-            x_line = waypoints["x_c"]
-            rospy.loginfo("select x_c line")
-        elif is_x_b:
-            x_line = waypoints["x_b"]
-            rospy.loginfo("select x_b line")
-        elif is_x_a:
-            x_line = waypoints["x_a"]
-            rospy.loginfo("select x_a line")
+        x_line = None   # xa,xb,xcいずれかのリストが入る
+        # NOTE 優先的にxcに行く
+        if is_to_xc:
+            x_line = waypoints["xc"]
+            rospy.loginfo("select next waypoint_xc")
+        elif is_to_xb:
+            x_line = waypoints["xb"]
+            rospy.loginfo("select next waypoint_xb")
+        elif is_to_xa:
+            x_line = waypoints["xa"]
+            rospy.loginfo("select next waypoint_xa")
         else:
             # a,b,cいずれにも移動できない場合
-            x_line = waypoints["x_b"]
-            rospy.loginfo("select default")
+            x_line = waypoints["xb"]
+            rospy.loginfo("select default waypoint")
 
         return x_line[currentstp]
 
