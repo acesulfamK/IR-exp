@@ -338,12 +338,12 @@ class WrsMainController(object):
         rospy.loginfo("#### start Task 1 ####")
         hsr_position = [
             ("check_floor_tall_table", "move_with_looking_floor"),
-            ("check_floor_l", "move_with_looking_floor"),
-            ("check_floor_c", "move_with_looking_floor"),
+            # ("check_floor_l", "move_with_looking_floor"),
+            # ("check_floor_c", "move_with_looking_floor"),
             ("check_floor_r", "move_with_looking_floor"),
             ("tall_table", "look_at_tall_table"),
-            ("long_table_l", "look_at_tall_table"),
-            ("long_table_c", "look_at_tall_table"),
+            # ("long_table_l", "look_at_tall_table"),
+            # ("long_table_c", "look_at_tall_table"),
             ("long_table_r", "look_at_tall_table"),
         ]
 
