@@ -348,8 +348,8 @@ class WrsMainController(object):
             ("check_floor_r", "move_with_looking_floor"),
             ("tall_table", "look_at_tall_table"),
             # ("long_table_l", "look_at_tall_table"),
-            # ("long_table_c", "look_at_tall_table"),
-            ("long_table_r", "look_at_tall_table"),
+            ("long_table_c", "look_at_tall_table"),
+            # ("long_table_r", "look_at_tall_table"),
         ]
 
         detect_cnt = 2
@@ -377,9 +377,9 @@ class WrsMainController(object):
 
                 # binに入れる
                 if cnt % 2 == 0:
-                    self.into_bin()
+                    self.into_bin_a()
                 else:
-                    self.into_bin()
+                    self.into_bin_b()
 
     def execute_task2a(self):
         """
