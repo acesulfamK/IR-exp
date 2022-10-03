@@ -327,11 +327,16 @@ class WrsMainController(object):
         rospy.sleep(5.0)
         self.change_pose("all_neutral")
 
-    def into_bin(self):
+    def into_bin_a(self):
         """箱に入れる事前位置に戻すまでのタスク
         """
         self.put_in_place("bin_a_place")
 
+    def into_bin_b(self):
+        """箱に入れる事前位置に戻すまでのタスク
+        """
+        self.put_in_place("bin_b_place")
+        
     def execute_task1(self):
         """task1でスコア200点を目指し、かつオブジェクトとの衝突などを発生しないように実施する
         """
@@ -349,7 +354,7 @@ class WrsMainController(object):
 
         detect_cnt = 2
         for plc, look_at in hsr_position:
-            for _ in range(detect_cnt):
+            for cnt in range(detect_cnt):
                 # 移動と視線指示
                 self.goto(plc)
                 self.change_pose(look_at)
@@ -371,7 +376,10 @@ class WrsMainController(object):
                 self.change_pose("all_neutral")
 
                 # binに入れる
-                self.into_bin()
+                if cnt % 2 == 0:
+                    self.into_bin()
+                else:
+                    self.into_bin()
 
     def execute_task2a(self):
         """
