@@ -291,7 +291,7 @@ class WrsMainController(object):
         self.grasp_from_side(grasp_pos.x, grasp_pos.y, grasp_pos.z, -90, -160, 0, "-y")
 
     def exe_graspable_method(self, grasp_pos, label=""):
-        """posの位置によって把持方法を判定し実行する。
+        """posの位置によって把持方法を判定し実行する。task1a用
         把持可能後半の判定が優先される
         """
         method = None
@@ -446,15 +446,17 @@ class WrsMainController(object):
 
     def select_next_waypoint(self, currentstp, pos_bboxes):
         """waypoints から近い場所にあるものを除外し、最適なwaypointを返す。
-        x座標を原点に近い方からxa,xb,xcに分け、移動先を決定する(デフォルトは0.4刻み)
-        pos_bboxesは get_grasp_coordinate 済みであること
+        x座標を原点に近い方からxa,xb,xcに分け、移動先を決定する(デフォルトは0.4間隔)
+        pos_bboxesは get_grasp_coordinate() 済みであること
         """
+        pos_xa = 1.7
+        pos_xb = 2.1
+        pos_xc = 2.5
         waypoints = {
-            "xa": [[1.7, 2.5, 45], [1.7, 2.9, 45], [1.7, 3.1, 90]],
-            "xb": [[2.1, 2.5, 90], [2.1, 2.9, 90], [2.1, 3.1, 90]],
-            "xc": [[2.5, 2.5, 135], [2.5, 2.9, 135], [2.5, 3.1, 90]]
+            "xa": [[pos_xa, 2.5, 45], [pos_xa, 2.9, 45], [pos_xa, 3.3, 90]],
+            "xb": [[pos_xb, 2.5, 90], [pos_xb, 2.9, 90], [pos_xb, 3.3, 90]],
+            "xc": [[pos_xc, 2.5, 135], [pos_xc, 2.9, 135], [pos_xc, 3.3, 90]]
         }
-        threshold_x = 1.9
 
         # 原点側からxa,xb,xcのラインに近い場合は候補から削除
         is_to_xa = True
@@ -464,15 +466,15 @@ class WrsMainController(object):
             pos_x = bbox.x
             rospy.loginfo(bbox.x)
             # NOTE ｙ座標次第で無視してよいオブジェクトもある。
-            if pos_x < threshold_x:
+            if pos_x < pos_xa + 0.2:
                 is_to_xa = False
                 rospy.loginfo("is_to_xa=False")
                 continue
-            elif pos_x < threshold_x + 0.4:
+            elif pos_x < pos_xb + 0.2:
                 is_to_xb = False
                 rospy.loginfo("is_to_xb=False")
                 continue
-            elif pos_x < threshold_x + 0.8:
+            elif pos_x < pos_xc + 0.2:
                 is_to_xc = False
                 rospy.loginfo("is_to_xc=False")
                 continue
