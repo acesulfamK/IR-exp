@@ -7,7 +7,7 @@ WRS環境内でロボットを動作させるためのメインプログラム
 from __future__ import unicode_literals, print_function, division, absolute_import
 import json
 import os
-# from select import select
+from select import select
 import traceback
 from turtle import pos
 import rospy
@@ -29,7 +29,8 @@ class WrsMainController(object):
     GRASP_TF_NAME = "object_grasping"
     GRASP_BACK_SAFE = {"z": 0.05, "xy": 0.3}
     GRASP_BACK = {"z": 0.05, "xy": 0.1}
-    HAND_PALM_OFFSET = 0.06  # hand_palm_linkは指の付け根なので、把持のために少しずらす必要がある
+    HAND_PALM_OFFSET = 0.05  # hand_palm_linkは指の付け根なので、把持のために少しずらす必要がある
+    HAND_PALM_Z_OFFSET = 0.075
 
     def __init__(self):
         # 変数の初期化
@@ -189,12 +190,6 @@ class WrsMainController(object):
     @classmethod
     def get_most_graspable_obj(cls, obj_list):
         """把持すべきscoreが最も高い物体を返す。
-
-        Args:
-            obj_list (_type_): _description_
-
-        Returns:
-            _type_: _description_
         """
         extracted = []
         extract_str = "detected object list\n"
@@ -278,16 +273,17 @@ class WrsMainController(object):
         ややアームを下に向けている
         """
         grasp_pos.y -= self.HAND_PALM_OFFSET
-        rospy.loginfo("grasp_from_front_side (%.2f, %.2f, %.2f)", grasp_pos.x, grasp_pos.y, grasp_pos.z)
+        rospy.loginfo("grasp_from_front_side (%.2f, %.2f, %.2f)",
+                      grasp_pos.x, grasp_pos.y, grasp_pos.z)
         self.grasp_from_side(grasp_pos.x, grasp_pos.y, grasp_pos.z, -90, -100, 0, "-y")
 
     def grasp_from_upper_side(self, grasp_pos):
         """上面から把持を行う
         オブジェクトに寄るときは、y軸から近づく上面からは近づかない
         """
-        # grasp_pos.z += self.HAND_PALM_OFFSET
-        grasp_pos.z += 0.075
-        rospy.loginfo("grasp_from_upper_side (%.2f, %.2f, %.2f)", grasp_pos.x, grasp_pos.y, grasp_pos.z)
+        grasp_pos.z += self.HAND_PALM_Z_OFFSET
+        rospy.loginfo("grasp_from_upper_side (%.2f, %.2f, %.2f)",
+                      grasp_pos.x, grasp_pos.y, grasp_pos.z)
         self.grasp_from_side(grasp_pos.x, grasp_pos.y, grasp_pos.z, -90, -160, 0, "-y")
 
     def exe_graspable_method(self, grasp_pos, label=""):
@@ -311,7 +307,7 @@ class WrsMainController(object):
 
         # bowlの張り付き対策
         if label in ["cup", "frisbee", "bowl"]:
-            method = self.grasp_from_front_side
+            method = self.grasp_from_upper_side
 
         method(grasp_pos)
         return True
@@ -336,7 +332,7 @@ class WrsMainController(object):
         """箱に入れる事前位置に戻すまでのタスク
         """
         self.put_in_place("bin_b_place")
-        
+
     def execute_task1(self):
         """task1でスコア200点を目指し、かつオブジェクトとの衝突などを発生しないように実施する
         """
@@ -349,12 +345,13 @@ class WrsMainController(object):
             ("tall_table", "look_at_tall_table"),
             # ("long_table_l", "look_at_tall_table"),
             ("long_table_c", "look_at_tall_table"),
-            # ("long_table_r", "look_at_tall_table"),
+            ("long_table_r", "look_at_tall_table"),
         ]
 
-        detect_cnt = 2
+        detect_cnt = 1
+        total_cnt = 0
         for plc, look_at in hsr_position:
-            for cnt in range(detect_cnt):
+            for _ in range(detect_cnt):
                 # 移動と視線指示
                 self.goto(plc)
                 self.change_pose(look_at)
@@ -376,10 +373,11 @@ class WrsMainController(object):
                 self.change_pose("all_neutral")
 
                 # binに入れる
-                if cnt % 2 == 0:
+                if total_cnt % 2 == 0:
                     self.into_bin_a()
                 else:
                     self.into_bin_b()
+                total_cnt += 1
 
     def execute_task2a(self):
         """
@@ -424,9 +422,8 @@ class WrsMainController(object):
 
             # BBoxの3次元座標を取得して、その座標で把持する
             grasp_pos = self.get_grasp_coordinate(grasp_bbox)
-            grasp_pos.y -= self.HAND_PALM_OFFSET
             self.change_pose("grasp_on_shelf")
-            self.grasp_from_side(grasp_pos.x, grasp_pos.y, grasp_pos.z, -90, -90, 0, "-y")
+            self.grasp_from_front_side(grasp_pos)
             self.change_pose("all_neutral")
 
             # 椅子の前に持っていく
@@ -457,9 +454,11 @@ class WrsMainController(object):
         x座標を原点に近い方からxa,xb,xcに分け、移動先を決定する(デフォルトは0.4間隔)
         pos_bboxesは get_grasp_coordinate() 済みであること
         """
+        interval = 0.45
         pos_xa = 1.7
-        pos_xb = 2.1
-        pos_xc = 2.5
+        pos_xb = pos_xa + interval
+        pos_xc = pos_xb + interval
+
         waypoints = {
             "xa": [[pos_xa, 2.5, 45], [pos_xa, 2.9, 45], [pos_xa, 3.3, 90]],
             "xb": [[pos_xb, 2.5, 90], [pos_xb, 2.9, 90], [pos_xb, 3.3, 90]],
@@ -472,17 +471,17 @@ class WrsMainController(object):
         is_to_xc = True
         for bbox in pos_bboxes:
             pos_x = bbox.x
-            rospy.loginfo(bbox.x)
+            rospy.loginfo("detected object obj.x = {:.2f}".format(bbox.x))
             # NOTE ｙ座標次第で無視してよいオブジェクトもある。
-            if pos_x < pos_xa + 0.2:
+            if pos_x < pos_xa + (interval/2):
                 is_to_xa = False
                 rospy.loginfo("is_to_xa=False")
                 continue
-            elif pos_x < pos_xb + 0.2:
+            elif pos_x < pos_xb + (interval/2):
                 is_to_xb = False
                 rospy.loginfo("is_to_xb=False")
                 continue
-            elif pos_x < pos_xc + 0.2:
+            elif pos_x < pos_xc + (interval/2):
                 is_to_xc = False
                 rospy.loginfo("is_to_xc=False")
                 continue
