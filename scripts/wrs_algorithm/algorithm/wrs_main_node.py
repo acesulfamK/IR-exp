@@ -24,8 +24,8 @@ class WrsMainController(object):
     """
     WRSのシミュレーション環境内でタスクを実行するクラス
     """
-    GRASP_OBJECT_LIST = ["apple", "sports_ball", "cup"]
-    IGNORE_LIST = ["dining table", "bench", "tv", "bed", "laptop", "person", "chair", "umbrella"]
+    GRASP_OBJECT_LIST = ["apple", "sports_ball", "kite"]
+    IGNORE_LIST = ["dining table", "bench", "tv", "bed", "laptop", "person", "chair", "umbrella", "book", "cup", "potted plant"]
     GRASP_TF_NAME = "object_grasping"
     GRASP_BACK_SAFE = {"z": 0.05, "xy": 0.3}
     GRASP_BACK = {"z": 0.05, "xy": 0.1}
@@ -338,17 +338,17 @@ class WrsMainController(object):
         """
         rospy.loginfo("#### start Task 1 ####")
         hsr_position = [
-            ("check_floor_tall_table", "move_with_looking_floor"),
-            # ("check_floor_l", "move_with_looking_floor"),
-            # ("check_floor_c", "move_with_looking_floor"),
-            ("check_floor_r", "move_with_looking_floor"),
-            ("tall_table", "look_at_tall_table"),
+            # ("check_floor_tall_table", "move_with_looking_floor"),
+            ("check_floor_l", "move_with_looking_floor"),
+            ("check_floor_c", "move_with_looking_floor"),
+            # ("check_floor_r", "move_with_looking_floor"),
+            # ("tall_table", "look_at_tall_table"),
             # ("long_table_l", "look_at_tall_table"),
             ("long_table_c", "look_at_tall_table"),
-            ("long_table_r", "look_at_tall_table"),
+            # ("long_table_r", "look_at_tall_table"),
         ]
 
-        detect_cnt = 1
+        detect_cnt = 2
         total_cnt = 0
         for plc, look_at in hsr_position:
             for _ in range(detect_cnt):
