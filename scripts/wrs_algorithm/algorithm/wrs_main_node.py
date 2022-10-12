@@ -25,7 +25,8 @@ class WrsMainController(object):
     WRSのシミュレーション環境内でタスクを実行するクラス
     """
     GRASP_OBJECT_LIST = ["apple", "sports_ball", "kite"]
-    IGNORE_LIST = ["dining table", "bench", "tv", "bed", "laptop", "person", "chair", "umbrella", "book", "cup", "potted plant"]
+    IGNORE_LIST = ["dining table", "bench", "tv", "bed", "laptop", "person",
+                   "chair", "umbrella", "book", "cup", "potted plant"]
     GRASP_TF_NAME = "object_grasping"
     GRASP_BACK_SAFE = {"z": 0.05, "xy": 0.3}
     GRASP_BACK = {"z": 0.05, "xy": 0.1}
@@ -94,7 +95,8 @@ class WrsMainController(object):
                                                     rospy.Time.now(),
                                                     rospy.Duration(4.0))
             return trans.transform
-        except (tf2_ros.LookupException, tf2_ros.ConnectivityException, tf2_ros.ExtrapolationException):
+        except (tf2_ros.LookupException, tf2_ros.ConnectivityException,
+                tf2_ros.ExtrapolationException):
             log_str = "failed to get transform between [{}] and [{}]\n".format(parent, child)
             log_str += traceback.format_exc()
             rospy.logerr(log_str)
