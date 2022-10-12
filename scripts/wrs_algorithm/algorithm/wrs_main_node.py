@@ -25,8 +25,7 @@ class WrsMainController(object):
     WRSのシミュレーション環境内でタスクを実行するクラス
     """
     GRASP_OBJECT_LIST = ["apple", "sports_ball", "kite"]
-    IGNORE_LIST = ["dining table", "bench", "tv", "bed", "laptop", "person",
-                   "chair", "umbrella", "book", "cup", "potted plant"]
+    IGNORE_LIST = ["dining table", "bench", "tv", "bed", "laptop", "person", "chair", "umbrella", "book", "cup", "potted plant"]
     GRASP_TF_NAME = "object_grasping"
     GRASP_BACK_SAFE = {"z": 0.05, "xy": 0.3}
     GRASP_BACK = {"z": 0.05, "xy": 0.1}
