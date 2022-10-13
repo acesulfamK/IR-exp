@@ -31,6 +31,7 @@ class WrsMainController(object):
     GRASP_BACK = {"z": 0.05, "xy": 0.1}
     HAND_PALM_OFFSET = 0.05  # hand_palm_linkは指の付け根なので、把持のために少しずらす必要がある
     HAND_PALM_Z_OFFSET = 0.075
+    DETECT_CNT = 2
 
     def __init__(self):
         # 変数の初期化
@@ -162,31 +163,11 @@ class WrsMainController(object):
         """
         最も把持が行えそうなbboxを一つ返す。
         """
-        # ignoreリストで除外しながら、つかむべきかのscoreを計算する。
-        extracted = []
-        extract_str = "detected object list\n"
-        ignore_str = ""
-        for obj in obj_list:
-            info_str = "{:<15}({:.2%}, {:3d}, {:3d}, {:3d}, {:3d})\n".format(
-                obj.label, obj.score, obj.x, obj.y, obj.w, obj.h)
-            if obj.label not in cls.IGNORE_LIST:
-                score = cls.calc_score_bbox(obj)
-                extracted.append({"bbox": obj, "score": score})
-                extract_str += "- extracted: {:07.3f} ".format(score) + info_str
-            else:
-                ignore_str += "- ignored  : " + info_str
-        rospy.loginfo(extract_str + ignore_str)
-
-        # つかむべきかのscoreが一番高い物体を返す
-        for obj_info in sorted(extracted, key=lambda x: x["score"], reverse=True):
-            obj = obj_info["bbox"]
-            info_str = "{} ({:.2%}, {:3d}, {:3d}, {:3d}, {:3d})\n".format(
-                obj.label, obj.score, obj.x, obj.y, obj.w, obj.h)
-            rospy.loginfo("selected bbox: " + info_str)
-            return obj
-
         # objが一つもない場合は、Noneを返す
-        return None
+        obj = cls.get_most_graspable_obj(obj_list)
+        if obj is None:
+            return None
+        return obj["bbox"]
 
     @classmethod
     def get_most_graspable_obj(cls, obj_list):
@@ -287,7 +268,7 @@ class WrsMainController(object):
                       grasp_pos.x, grasp_pos.y, grasp_pos.z)
         self.grasp_from_side(grasp_pos.x, grasp_pos.y, grasp_pos.z, -90, -160, 0, "-y")
 
-    def exe_graspable_method(self, grasp_pos, label=""):
+    def exec_graspable_method(self, grasp_pos, label=""):
         """posの位置によって把持方法を判定し実行する。task1a用
         把持可能後半の判定が優先される
         """
@@ -297,18 +278,18 @@ class WrsMainController(object):
         desk_z = 0.35
 
         # 把持禁止判定
-        if (graspable_y < grasp_pos.y and desk_z > grasp_pos.z):
+        if graspable_y < grasp_pos.y and desk_z > grasp_pos.z:
             return False
 
-        # 机の下である条件を満たす場合
-        if (desk_y < grasp_pos.y and desk_z > grasp_pos.z):
-            method = self.grasp_from_front_side
-        else:
-            method = self.grasp_from_upper_side
-
-        # bowlの張り付き対策
         if label in ["cup", "frisbee", "bowl"]:
+            # bowlの張り付き対策
             method = self.grasp_from_upper_side
+        else:
+            if desk_y < grasp_pos.y and desk_z > grasp_pos.z:
+                # 机の下である場合
+                method = self.grasp_from_front_side
+            else:
+                method = self.grasp_from_upper_side
 
         method(grasp_pos)
         return True
@@ -349,10 +330,10 @@ class WrsMainController(object):
             # ("long_table_r", "look_at_tall_table"),
         ]
 
-        detect_cnt = 2
+        DETECT_CNT = 2
         total_cnt = 0
         for plc, look_at in hsr_position:
-            for _ in range(detect_cnt):
+            for _ in range(DETECT_CNT):
                 # 移動と視線指示
                 self.goto(plc)
                 self.change_pose(look_at)
@@ -370,7 +351,7 @@ class WrsMainController(object):
                 # 把持対象がある場合は把持関数実施
                 grasp_pos = self.get_grasp_coordinate(grasp_bbox)
                 self.change_pose("grasp_on_table")
-                self.exe_graspable_method(grasp_pos, label)
+                self.exec_graspable_method(grasp_pos, label)
                 self.change_pose("all_neutral")
 
                 # binに入れる
