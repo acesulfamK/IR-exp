@@ -330,10 +330,9 @@ class WrsMainController(object):
             # ("long_table_r", "look_at_tall_table"),
         ]
 
-        DETECT_CNT = 2
         total_cnt = 0
         for plc, look_at in hsr_position:
-            for _ in range(DETECT_CNT):
+            for _ in range(self.DETECT_CNT):
                 # 移動と視線指示
                 self.goto(plc)
                 self.change_pose(look_at)
