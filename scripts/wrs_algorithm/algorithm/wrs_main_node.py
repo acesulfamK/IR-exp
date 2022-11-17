@@ -376,6 +376,10 @@ class WrsMainController(object):
         self.change_pose("look_at_near_floor")
         self.goto("standby_2a")
 
+        # 物体検出結果の取得 [把持するbboxを決定する関数と同じ]
+        detected_objs = self.get_latest_detection()
+        grasp_bbox = self.get_most_graspable_bbox(detected_objs.bboxes)
+
         # 落ちているブロックを避けて移動
         self.execute_avoid_blocks()
 
