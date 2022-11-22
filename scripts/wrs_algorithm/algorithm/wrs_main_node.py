@@ -171,7 +171,8 @@ class WrsMainController(object):
 
     @classmethod
     def get_most_graspable_obj(cls, obj_list):
-        """把持すべきscoreが最も高い物体を返す。
+        """
+        把持すべきscoreが最も高い物体を返す。
         """
         extracted = []
         extract_str = "detected object list\n"
@@ -214,9 +215,7 @@ class WrsMainController(object):
         """
         把持の一連の動作を行う
 
-        Note
-        ----
-        - tall_tableに対しての予備動作を生成するときはpreliminary="-y"と設定することになる。
+        Note: tall_tableに対しての予備動作を生成するときはpreliminary="-y"と設定することになる。
         """
         if preliminary not in ["+y", "-y", "+x", "-x"]:
             raise RuntimeError("unnkown graps preliminary type [{}]".format(preliminary))
@@ -251,7 +250,8 @@ class WrsMainController(object):
             grasp_back_safe["x"], grasp_back_safe["y"], grasp_back_safe["z"], yaw, pitch, roll)
 
     def grasp_from_front_side(self, grasp_pos):
-        """正面把持を行う
+        """
+        正面把持を行う
         ややアームを下に向けている
         """
         grasp_pos.y -= self.HAND_PALM_OFFSET
@@ -260,7 +260,8 @@ class WrsMainController(object):
         self.grasp_from_side(grasp_pos.x, grasp_pos.y, grasp_pos.z, -90, -100, 0, "-y")
 
     def grasp_from_upper_side(self, grasp_pos):
-        """上面から把持を行う
+        """
+        上面から把持を行う
         オブジェクトに寄るときは、y軸から近づく上面からは近づかない
         """
         grasp_pos.z += self.HAND_PALM_Z_OFFSET
@@ -269,7 +270,8 @@ class WrsMainController(object):
         self.grasp_from_side(grasp_pos.x, grasp_pos.y, grasp_pos.z, -90, -160, 0, "-y")
 
     def exec_graspable_method(self, grasp_pos, label=""):
-        """posの位置によって把持方法を判定し実行する。task1a用
+        """
+        posの位置によって把持方法を判定し実行する。task1a用
         把持可能後半の判定が優先される
         """
         method = None
@@ -295,7 +297,8 @@ class WrsMainController(object):
         return True
 
     def put_in_place(self, place):
-        """指定場所に入れる事前位置に戻すまでのタスク
+        """
+        指定場所に入れる事前位置に戻すまでのタスク
         """
         self.change_pose("move_with_looking_floor")
         self.goto(place)
@@ -306,24 +309,27 @@ class WrsMainController(object):
         self.change_pose("all_neutral")
 
     def into_bin_a(self):
-        """箱に入れる事前位置に戻すまでのタスク
+        """
+        箱に入れる事前位置に戻すまでのタスク
         """
         self.put_in_place("bin_a_place")
 
     def into_bin_b(self):
-        """箱に入れる事前位置に戻すまでのタスク
+        """
+        箱に入れる事前位置に戻すまでのタスク
         """
         self.put_in_place("bin_b_place")
 
     def execute_task1(self):
-        """task1でスコア200点を目指し、かつオブジェクトとの衝突などを発生しないように実施する
+        """
+        task1でスコア200点を目指し、かつオブジェクトとの衝突などを発生しないように実施する
         """
         rospy.loginfo("#### start Task 1 ####")
         hsr_position = [
-            # ("check_floor_tall_table", "move_with_looking_floor"),
-            ("check_floor_l", "move_with_looking_floor"),
-            ("check_floor_c", "move_with_looking_floor"),
-            # ("check_floor_r", "move_with_looking_floor"),
+            # ("floor_tall_table", "move_with_looking_floor"),
+            ("floor_long_table_l", "move_with_looking_floor"),
+            ("floor_long_table_c", "move_with_looking_floor"),
+            # ("floor_long_table_r", "move_with_looking_floor"),
             # ("tall_table", "look_at_tall_table"),
             # ("long_table_l", "look_at_tall_table"),
             ("long_table_c", "look_at_tall_table"),
@@ -370,14 +376,11 @@ class WrsMainController(object):
         self.change_pose("look_at_near_floor")
         self.goto("standby_2a")
 
+        # 物体検出結果の取得 [把持するbboxを決定する関数と同じ]
         detected_objs = self.get_latest_detection()
         grasp_bbox = self.get_most_graspable_bbox(detected_objs.bboxes)
-        if grasp_bbox is not None:
-            # 本来はここで障害物を除去する
-            pass
-        else:
-            rospy.logwarn("Cannot find object to grasp. Grasping in task2a is aborted.")
 
+        # 落ちているブロックを避けて移動
         self.execute_avoid_blocks()
 
         self.goto("go_throw_2a")
@@ -419,19 +422,22 @@ class WrsMainController(object):
             self.change_pose("all_neutral")
 
     def execute_avoid_blocks(self):
-        """blockを避ける
+        """
+        blockを避ける
         """
         for i in range(3):
+            # 認識した物体の座標を算出
             detected_objs = self.get_latest_detection()
-            # 取得した物体の座標を算出
             bboxes = detected_objs.bboxes
             pos_bboxes = [self.get_grasp_coordinate(bbox) for bbox in bboxes]
+
             waypoint = self.select_next_waypoint(i, pos_bboxes)
             rospy.loginfo(waypoint)
             self.goto_raw(waypoint)
 
     def select_next_waypoint(self, currentstp, pos_bboxes):
-        """waypoints から近い場所にあるものを除外し、最適なwaypointを返す。
+        """
+        waypoints から近い場所にあるものを除外し、最適なwaypointを返す。
         x座標を原点に近い方からxa,xb,xcに分け、移動先を決定する(デフォルトは0.4間隔)
         pos_bboxesは get_grasp_coordinate() 済みであること
         """
