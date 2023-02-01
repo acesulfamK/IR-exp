@@ -85,6 +85,11 @@ class WrsMainController(object):
         rospy.loginfo("instruction received. [%s]", msg.data)
         self.instruction_list.append(msg.data)
 
+    def instruction_cb_warn(self, msg):
+        """warning を受信する"""
+        rospy.logwarn("[warning] instruction received. [%s]", msg.data)
+        self.instruction_list.append(msg.data)
+
     def get_relative_coordinate(self, parent, child):
         """
         tfで相対座標を取得する
