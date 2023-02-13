@@ -36,6 +36,7 @@ class WrsMainController(object):
     def __init__(self):
         # 変数の初期化
         self.instruction_list = []
+        self.detection_list = []
 
         # configファイルの受信
         self.coordinates = self.load_json(self.get_path(["config", "coordinates.json"]))
@@ -57,6 +58,9 @@ class WrsMainController(object):
 
         self.instruction_sub = rospy.Subscriber(
             "/message", String, self.instruction_cb, queue_size=10)
+        
+        self.detection_sub = rospy.Subscriber(
+            "/detect_msg", String, self.detection_cb, queue_size=10)
 
     @staticmethod
     def get_path(pathes, package="wrs_algorithm"):
@@ -85,10 +89,12 @@ class WrsMainController(object):
         rospy.loginfo("instruction received. [%s]", msg.data)
         self.instruction_list.append(msg.data)
 
-    def instruction_cb_warn(self, msg):
-        """warning を受信する"""
-        rospy.logwarn("[warning] instruction received. [%s]", msg.data)
-        self.instruction_list.append(msg.data)
+    def detection_cb(self, msg):
+        """
+        検出結果を受信する
+        """
+        rospy.loginfo("received [detect contact with %s]", msg.data)
+        self.detection_list.append(msg.data)
 
     def get_relative_coordinate(self, parent, child):
         """
