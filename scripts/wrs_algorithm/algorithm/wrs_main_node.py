@@ -392,6 +392,23 @@ class WrsMainController(object):
         """
         rospy.loginfo("#### start Task 2b ####")
 
+        # 命令内容を解釈
+        target_obj = None
+        target_person = None
+        if self.instruction_list:
+            targets = self.instruction_list[-1].split("to")
+            target_obj = targets[0].strip()
+            target_person = targets[1].strip()
+            rospy.loginfo(target_obj)
+            rospy.loginfo(target_person)
+        
+        # 左から順にものを持っていく
+        self.deliver_to_people()
+
+    def deliver_to_people(self):
+        """
+        左から順にオブジェクトを持っていく
+        """
         for idx_trial in range(2):
             self.change_pose("move_with_looking_floor")
             self.goto("shelf")
@@ -420,6 +437,7 @@ class WrsMainController(object):
             rospy.sleep(10.0)
             gripper.command(1)
             self.change_pose("all_neutral")
+
 
     def execute_avoid_blocks(self):
         """
@@ -496,8 +514,10 @@ class WrsMainController(object):
         全てのタスクを実行する
         """
         self.change_pose("all_neutral")
-        self.execute_task1()
-        self.execute_task2a()
+        # self.execute_task1()
+        # self.execute_task2a()
+
+        self.goto("go_throw_2a")
         self.execute_task2b()
 
 
