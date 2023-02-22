@@ -413,6 +413,8 @@ class WrsMainController(object):
             if len(targets) > 1:
                 target_obj = targets[0].strip()
                 target_person = targets[1].strip()
+            else:
+                rospy.logwarn("The instruction is wrong")
         else:
             rospy.logwarn("instruction_list is None")
 
