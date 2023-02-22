@@ -409,11 +409,20 @@ class WrsMainController(object):
         target_obj = None
         target_person = None
         if self.instruction_list:
-            targets = self.instruction_list[-1].split("to")
-            target_obj = targets[0].strip()
-            target_person = targets[1].strip()
+            targets = self.instruction_list[-1].split(" to ")
+            if len(targets) > 1:
+                target_obj = targets[0].strip()
+                target_person = targets[1].strip()
+        else:
+            rospy.logwarn("instruction_list is None")
 
-        self.deliver_to_target("sports ball", "person right")
+        # チュートリアル用に値を上書き
+        target_obj = "sports ball"
+        target_person = "person right"
+
+        # 指定したオブジェクトを指定した配達先へ
+        if target_obj and target_person:
+            self.deliver_to_target(target_obj, target_person)
 
     def deliver_to_target(self, target_obj, target_person):
         """
