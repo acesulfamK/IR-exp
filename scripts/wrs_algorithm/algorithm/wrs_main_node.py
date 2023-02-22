@@ -211,6 +211,19 @@ class WrsMainController(object):
 
         return 1 / xy_diff + 2 * label_score
 
+    @classmethod
+    def get_most_graspable_bboxes_by_label(cls, obj_list, label):
+        """
+        label名が一致するオブジェクトの中から最も把持すべき物体のbboxを返す
+        """
+        match_objs = []
+        for obj in obj_list:
+            if obj.label in cls.IGNORE_LIST:
+                continue
+            if obj.label == label:
+                match_objs.append(obj)
+        return cls.get_most_graspable_bbox(match_objs)
+
     def grasp_from_side(self, pos_x, pos_y, pos_z, yaw, pitch, roll, preliminary="-y"):
         """
         把持の一連の動作を行う
@@ -399,45 +412,41 @@ class WrsMainController(object):
             targets = self.instruction_list[-1].split("to")
             target_obj = targets[0].strip()
             target_person = targets[1].strip()
-            rospy.loginfo(target_obj)
-            rospy.loginfo(target_person)
-        
-        # 左から順にものを持っていく
-        self.deliver_to_people()
 
-    def deliver_to_people(self):
+        self.deliver_to_target("sports ball", "person right")
+
+    def deliver_to_target(self, target_obj, target_person):
         """
-        左から順にオブジェクトを持っていく
+        棚で取得したものを人に渡す。
         """
-        for idx_trial in range(2):
-            self.change_pose("move_with_looking_floor")
-            self.goto("shelf")
-            self.change_pose("look_at_shelf")
+        self.change_pose("move_with_looking_floor")
+        self.goto("shelf")
+        self.change_pose("look_at_shelf")
 
-            # 物体検出結果から、把持するbboxを決定
-            detected_objs = self.get_latest_detection()
-            grasp_bbox = self.get_most_graspable_bbox(detected_objs.bboxes)
-            if grasp_bbox is None:
-                rospy.logwarn("Cannot find object to grasp. task2b is aborted.")
-                return
+        rospy.loginfo("target_obj: " + target_obj + "  target_person: " + target_person)
+        # 物体検出結果から、把持するbboxを決定
+        detected_objs = self.get_latest_detection()
+        grasp_bbox = self.get_most_graspable_bboxes_by_label(detected_objs.bboxes, target_obj)
+        if grasp_bbox is None:
+            rospy.logwarn("Cannot find object to grasp. task2b is aborted.")
+            return
 
-            # BBoxの3次元座標を取得して、その座標で把持する
-            grasp_pos = self.get_grasp_coordinate(grasp_bbox)
-            self.change_pose("grasp_on_shelf")
-            self.grasp_from_front_side(grasp_pos)
-            self.change_pose("all_neutral")
+        # BBoxの3次元座標を取得して、その座標で把持する
+        grasp_pos = self.get_grasp_coordinate(grasp_bbox)
+        self.change_pose("grasp_on_shelf")
+        self.grasp_from_front_side(grasp_pos)
+        self.change_pose("all_neutral")
 
-            # 椅子の前に持っていく
-            self.change_pose("move_with_looking_floor")
-            if idx_trial == 0:
-                self.goto("chair_a")
-            elif idx_trial == 1:
-                self.goto("chair_b")
-            self.change_pose("deliver_to_human")
-            rospy.sleep(10.0)
-            gripper.command(1)
-            self.change_pose("all_neutral")
-
+        # 椅子の前に持っていく
+        self.change_pose("move_with_looking_floor")
+        if "left" in target_person:
+            self.goto("chair_a")
+        elif "right" in target_person:
+            self.goto("chair_b")
+        self.change_pose("deliver_to_human")
+        rospy.sleep(10.0)
+        gripper.command(1)
+        self.change_pose("all_neutral")
 
     def execute_avoid_blocks(self):
         """
@@ -514,10 +523,8 @@ class WrsMainController(object):
         全てのタスクを実行する
         """
         self.change_pose("all_neutral")
-        # self.execute_task1()
-        # self.execute_task2a()
-
-        self.goto("go_throw_2a")
+        self.execute_task1()
+        self.execute_task2a()
         self.execute_task2b()
 
 
