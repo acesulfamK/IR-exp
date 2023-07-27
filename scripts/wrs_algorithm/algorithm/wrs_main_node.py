@@ -58,7 +58,7 @@ class WrsMainController(object):
 
         self.instruction_sub = rospy.Subscriber(
             "/message", String, self.instruction_cb, queue_size=10)
-        
+
         self.detection_sub = rospy.Subscriber(
             "/detect_msg", String, self.detection_cb, queue_size=10)
 
@@ -416,11 +416,19 @@ class WrsMainController(object):
         """
         rospy.loginfo("#### start Task 2b ####")
 
-        # 命令内容を解釈
-        target_obj = None
-        target_person = None
+        # 命令文を取得
         if self.instruction_list:
-            targets = self.instruction_list[-1].split(" to ")
+            latest_instruction = self.instruction_list[-1]
+            rospy.loginfo("recieved instruction: %s", latest_instruction)
+        else:
+            rospy.logwarn("instruction_list is None")
+
+        # 命令内容を解釈  # CHANGE1_ON_REL: # 本来は命令文を解釈するべきである。
+        target_obj = None  # CHANGE1_ON_REL: target_obj = "sports ball"
+        target_person = None  # CHANGE1_ON_REL: target_person = "person right"
+        # DEL_ON_REL_BEGIN
+        if self.instruction_list:
+            targets = latest_instruction.split(" to ")
             if len(targets) > 1:
                 target_obj = targets[0].strip()
                 target_person = targets[1].strip()
@@ -428,10 +436,7 @@ class WrsMainController(object):
                 rospy.logwarn("The instruction is wrong")
         else:
             rospy.logwarn("instruction_list is None")
-
-        # チュートリアル用に値を上書き
-        target_obj = "sports ball"
-        target_person = "person right"
+        # DEL_ON_REL_END
 
         # 指定したオブジェクトを指定した配達先へ
         if target_obj and target_person:
