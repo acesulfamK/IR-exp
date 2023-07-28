@@ -12,9 +12,21 @@ tmp_path=/tmp/change_to_release-$(basename $script_path)
 cp $script_path $tmp_path
 
 cat $tmp_path \
-    | sed "/\# DEL1_ON_REL/d" \
     | sed -E "s/^( *).*\# CHANGE1_ON_REL: (.*)$/\1\2/" \
-    | sed -E "s/^.*(\# DEL_ON_REL_BEGIN).*$/\1/" \
-    | sed -E "s/^.*(\# DEL_ON_REL_END).*$/\1/" \
-    | sed -z "s/\# DEL_ON_REL_BEGIN.*\# DEL_ON_REL_END\n//" \
+    | awk '
+        BEGIN {
+            printing = "ON"
+        }
+        match($0 , "# *DEL_ON_REL_BEGIN") {
+            printing = "OFF"
+        }
+        {
+            if ( printing == "ON" && !match($0, "# *DEL1_ON_REL") ) {
+                print $0
+            }
+        }
+        match($0, "# *DEL_ON_REL_END") {
+            printing = "ON"
+        }
+        ' \
     > $script_path
