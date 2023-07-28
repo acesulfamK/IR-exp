@@ -227,12 +227,10 @@ class WrsMainController(object):
         """
         label名が一致するオブジェクトの中から最も把持すべき物体のbboxを返す
         """
-        match_objs = []
-        for obj in obj_list:
-            if obj.label in cls.IGNORE_LIST:
-                continue
-            if obj.label == label:
-                match_objs.append(obj)
+        match_objs = [obj for obj in obj_list if label in obj.label]
+        if len(match_objs) == 0:
+            rospy.logwarn("Cannot find a object which labeled with similar name.")
+            return None
         return cls.get_most_graspable_bbox(match_objs)
 
     def grasp_from_side(self, pos_x, pos_y, pos_z, yaw, pitch, roll, preliminary="-y"):
@@ -431,6 +429,7 @@ class WrsMainController(object):
         if target_obj and target_person:
             self.deliver_to_target(target_obj, target_person)
 
+    @staticmethod
     def extract_target_obj_and_target_person(instruction):
         """
         指示文から対象となる物体名称を抽出する
