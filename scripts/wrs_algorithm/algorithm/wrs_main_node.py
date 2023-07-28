@@ -422,25 +422,31 @@ class WrsMainController(object):
             rospy.loginfo("recieved instruction: %s", latest_instruction)
         else:
             rospy.logwarn("instruction_list is None")
+            return
 
-        # 命令内容を解釈  # CHANGE1_ON_REL: # 本来は命令文を解釈するべきである。
-        target_obj = None  # CHANGE1_ON_REL: target_obj = "sports ball"
-        target_person = None  # CHANGE1_ON_REL: target_person = "person right"
-        # DEL_ON_REL_BEGIN
-        if self.instruction_list:
-            targets = latest_instruction.split(" to ")
-            if len(targets) > 1:
-                target_obj = targets[0].strip()
-                target_person = targets[1].strip()
-            else:
-                rospy.logwarn("The instruction is wrong")
-        else:
-            rospy.logwarn("instruction_list is None")
-        # DEL_ON_REL_END
+        # 命令内容を解釈
+        target_obj, target_person = self.extract_target_obj_and_target_person(latest_instruction)
 
         # 指定したオブジェクトを指定した配達先へ
         if target_obj and target_person:
             self.deliver_to_target(target_obj, target_person)
+
+    def extract_target_obj_and_target_person(instruction):
+        """
+        指示文から対象となる物体名称を抽出する
+        """
+        target_obj = None  # CHANGE1_ON_REL: target_obj = "apple"
+        target_person = None  # CHANGE1_ON_REL: target_person = "right"
+
+        # DEL_ON_REL_BEGIN
+        targets = instruction.split(" to ")
+        if len(targets) > 1:
+            target_obj = targets[0].strip()
+            target_person = targets[1].strip()
+        else:
+            rospy.logwarn("The instruction is wrong")
+        # DEL_ON_REL_END
+        return target_obj, target_person
 
     def deliver_to_target(self, target_obj, target_person):
         """
@@ -466,10 +472,13 @@ class WrsMainController(object):
 
         # 椅子の前に持っていく
         self.change_pose("move_with_looking_floor")
+        # CHANGE1_ON_REL: self.goto("chair_b")
+        # DEL_ON_REL_BEGIN
         if "left" in target_person:
             self.goto("chair_a")
         elif "right" in target_person:
             self.goto("chair_b")
+        # DEL_ON_REL_END
         self.change_pose("deliver_to_human")
         rospy.sleep(10.0)
         gripper.command(1)
