@@ -24,8 +24,6 @@ class WrsMainController(object):
     """
     WRSのシミュレーション環境内でタスクを実行するクラス
     """
-    GRASP_OBJECT_LIST = ["apple", "sports_ball", "kite"]
-    IGNORE_LIST = ["dining table", "bench", "tv", "bed", "laptop", "person", "chair", "umbrella", "book", "cup", "potted plant"]
     GRASP_TF_NAME = "object_grasping"
     GRASP_BACK_SAFE = {"z": 0.05, "xy": 0.3}
     GRASP_BACK = {"z": 0.05, "xy": 0.1}
@@ -191,12 +189,9 @@ class WrsMainController(object):
         for obj in obj_list:
             info_str = "{:<15}({:.2%}, {:3d}, {:3d}, {:3d}, {:3d})\n".format(
                 obj.label, obj.score, obj.x, obj.y, obj.w, obj.h)
-            if obj.label not in cls.IGNORE_LIST:
-                score = cls.calc_score_bbox(obj)
-                extracted.append({"bbox": obj, "score": score, "label": obj.label})
-                extract_str += "- extracted: {:07.3f} ".format(score) + info_str
-            else:
-                ignore_str += "- ignored  : " + info_str
+            score = cls.calc_score_bbox(obj)
+            extracted.append({"bbox": obj, "score": score, "label": obj.label})
+            extract_str += "- score={:07.3f} ".format(score) + info_str
         rospy.loginfo(extract_str + ignore_str)
 
         # つかむべきかのscoreが一番高い物体を返す
@@ -215,12 +210,11 @@ class WrsMainController(object):
         """
         detector_msgs/BBoxのスコアを計算する
         """
-        label_score = 1 if bbox.label in cls.GRASP_OBJECT_LIST else 0
         gravity_x = bbox.x + bbox.w / 2
         gravity_y = bbox.y + bbox.h / 2
         xy_diff = abs(320 - gravity_x) / 320 + abs(360 - gravity_y) / 240
 
-        return 1 / xy_diff + 2 * label_score
+        return 1 / xy_diff
 
     @classmethod
     def get_most_graspable_bboxes_by_label(cls, obj_list, label):
