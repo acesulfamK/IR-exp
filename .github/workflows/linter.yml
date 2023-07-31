@@ -2,8 +2,10 @@ name: linter
 
 on:
   pull_request:
-    branches:
-      - '*'
+    branches-ignore:
+      - product
+      - build
+      - 'feature/*'
   push:
     branches:
       - product
