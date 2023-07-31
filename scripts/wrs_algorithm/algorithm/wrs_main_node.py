@@ -221,7 +221,7 @@ class WrsMainController(object):
         """
         label名が一致するオブジェクトの中から最も把持すべき物体のbboxを返す
         """
-        match_objs = [obj for obj in obj_list if label in obj.label]
+        match_objs = [obj for obj in obj_list if obj.label in label]
         if len(match_objs) == 0:
             rospy.logwarn("Cannot find a object which labeled with similar name.")
             return None
@@ -552,7 +552,7 @@ class WrsMainController(object):
         全てのタスクを実行する
         """
         self.change_pose("all_neutral")
-        self.execute_task1()
+        # self.execute_task1()
         self.execute_task2a()
         self.execute_task2b()
 
