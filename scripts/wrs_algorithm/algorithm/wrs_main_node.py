@@ -552,7 +552,7 @@ class WrsMainController(object):
         全てのタスクを実行する
         """
         self.change_pose("all_neutral")
-        # self.execute_task1()
+        self.execute_task1()
         self.execute_task2a()
         self.execute_task2b()
 
