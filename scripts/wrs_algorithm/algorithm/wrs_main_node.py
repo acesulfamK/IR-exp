@@ -91,7 +91,7 @@ class WrsMainController(object):
         """
         検出結果を受信する
         """
-        rospy.loginfo("received [detect contact with %s]", msg.data)
+        rospy.loginfo("received [Collision Detected with %s]", msg.data)
         self.detection_list.append(msg.data)
 
     def get_relative_coordinate(self, parent, child):
