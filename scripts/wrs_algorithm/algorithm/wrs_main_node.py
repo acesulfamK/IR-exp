@@ -24,6 +24,7 @@ class WrsMainController(object):
     """
     WRSのシミュレーション環境内でタスクを実行するクラス
     """
+    IGNORE_LIST = ["small_marker", "large_marker", "lego_duplo", "cracker_box"]
     GRASP_TF_NAME = "object_grasping"
     GRASP_BACK_SAFE = {"z": 0.05, "xy": 0.3}
     GRASP_BACK = {"z": 0.05, "xy": 0.1}
@@ -189,9 +190,13 @@ class WrsMainController(object):
         for obj in obj_list:
             info_str = "{:<15}({:.2%}, {:3d}, {:3d}, {:3d}, {:3d})\n".format(
                 obj.label, obj.score, obj.x, obj.y, obj.w, obj.h)
-            score = cls.calc_score_bbox(obj)
-            extracted.append({"bbox": obj, "score": score, "label": obj.label})
-            extract_str += "- score={:07.3f} ".format(score) + info_str
+            if obj.label not in cls.IGNORE_LIST:
+                score = cls.calc_score_bbox(obj)
+                extracted.append({"bbox": obj, "score": score, "label": obj.label})
+                extract_str += "- extracted: {:07.3f} ".format(score) + info_str
+            else:
+                ignore_str += "- ignored  : " + info_str
+
         rospy.loginfo(extract_str + ignore_str)
 
         # つかむべきかのscoreが一番高い物体を返す
@@ -360,15 +365,14 @@ class WrsMainController(object):
                 gripper.command(0)
 
                 # 把持対象の有無チェック
-                need_grasp_objects = ["peach", "cup"]
                 detected_objs = self.get_latest_detection()
-                graspable_bboxes = [detected_bbox for detected_bbox in detected_objs.bboxes if detected_bbox.label in need_grasp_objects]
+                graspable_obj = self.get_most_graspable_obj(detected_objs.bboxes)
 
-                if not graspable_bboxes:
+                if graspable_obj is None:
                     rospy.logwarn("Cannot determine object to grasp. Grasping is aborted.")
                     continue
-                label = graspable_bboxes[0].label
-                grasp_bbox = graspable_bboxes[0]
+                label = graspable_obj["label"]
+                grasp_bbox = graspable_obj["bbox"]
                 rospy.loginfo("grasp the " + label)
 
                 # 把持対象がある場合は把持関数実施
