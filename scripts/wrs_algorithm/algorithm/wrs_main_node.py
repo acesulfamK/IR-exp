@@ -82,7 +82,7 @@ class WrsMainController(object):
 
     def instruction_cb(self, msg):
         """
-        指示分を受信する
+        指示文を受信する
         """
         rospy.loginfo("instruction received. [%s]", msg.data)
         self.instruction_list.append(msg.data)
@@ -287,8 +287,7 @@ class WrsMainController(object):
 
     def exec_graspable_method(self, grasp_pos, label=""):
         """
-        posの位置によって把持方法を判定し実行する。task1a用
-        把持可能後半の判定が優先される
+        task1専用:posの位置によって把持方法を判定し実行する。
         """
         method = None
         graspable_y = 1.85  # これ以上奥は把持できない
@@ -338,7 +337,7 @@ class WrsMainController(object):
 
     def execute_task1(self):
         """
-        task1でスコア200点を目指し、かつオブジェクトとの衝突などを発生しないように実施する
+        task1を実行する
         """
         rospy.loginfo("#### start Task 1 ####")
         hsr_position = [
