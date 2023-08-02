@@ -342,12 +342,12 @@ class WrsMainController(object):
         rospy.loginfo("#### start Task 1 ####")
         hsr_position = [
             # ("floor_tall_table", "move_with_looking_floor"),
-            ("floor_long_table_l", "move_with_looking_floor"),
-            ("floor_long_table_c", "move_with_looking_floor"),
+            # ("floor_long_table_l", "move_with_looking_floor"),
+            # ("floor_long_table_c", "move_with_looking_floor"),
             # ("floor_long_table_r", "move_with_looking_floor"),
-            # ("tall_table", "look_at_tall_table"),
+            ("tall_table", "look_at_tall_table"),
             # ("long_table_l", "look_at_tall_table"),
-            ("long_table_c", "look_at_tall_table"),
+            # ("long_table_c", "look_at_tall_table"),
             # ("long_table_r", "look_at_tall_table"),
         ]
 
@@ -360,13 +360,16 @@ class WrsMainController(object):
                 gripper.command(0)
 
                 # 把持対象の有無チェック
+                need_grasp_objects = ["peach", "cup"]
                 detected_objs = self.get_latest_detection()
-                graspable_obj = self.get_most_graspable_obj(detected_objs.bboxes)
-                if graspable_obj is None:
+                graspable_bboxes = [detected_bbox for detected_bbox in detected_objs.bboxes if detected_bbox.label in need_grasp_objects]
+
+                if not graspable_bboxes:
                     rospy.logwarn("Cannot determine object to grasp. Grasping is aborted.")
                     continue
-                label = graspable_obj["label"]
-                grasp_bbox = graspable_obj["bbox"]
+                label = graspable_bboxes[0].label
+                grasp_bbox = graspable_bboxes[0]
+                rospy.loginfo("grasp the " + label)
 
                 # 把持対象がある場合は把持関数実施
                 grasp_pos = self.get_grasp_coordinate(grasp_bbox)
