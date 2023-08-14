@@ -24,7 +24,7 @@ class WrsMainController(object):
     """
     WRSのシミュレーション環境内でタスクを実行するクラス
     """
-    IGNORE_LIST = ["small_marker", "large_marker", "lego_duplo", "cracker_box"]
+    IGNORE_LIST = ["small_marker", "large_marker", "lego_duplo", "spatula", "nine_hole_peg_test"]
     GRASP_TF_NAME = "object_grasping"
     GRASP_BACK_SAFE = {"z": 0.05, "xy": 0.3}
     GRASP_BACK = {"z": 0.05, "xy": 0.1}
@@ -347,13 +347,13 @@ class WrsMainController(object):
         rospy.loginfo("#### start Task 1 ####")
         hsr_position = [
             # ("floor_tall_table", "move_with_looking_floor"),
-            # ("floor_long_table_l", "move_with_looking_floor"),
-            # ("floor_long_table_c", "move_with_looking_floor"),
-            # ("floor_long_table_r", "move_with_looking_floor"),
             ("tall_table", "look_at_tall_table"),
+            # ("floor_long_table_l", "move_with_looking_floor"),
             # ("long_table_l", "look_at_tall_table"),
+            # ("floor_long_table_c", "move_with_looking_floor"),
             # ("long_table_c", "look_at_tall_table"),
-            # ("long_table_r", "look_at_tall_table"),
+            ("floor_long_table_r", "move_with_looking_floor"),
+            ("long_table_r", "look_at_tall_table"),
         ]
 
         total_cnt = 0
