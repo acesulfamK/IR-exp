@@ -24,12 +24,14 @@ class WrsMainController(object):
     """
     WRSのシミュレーション環境内でタスクを実行するクラス
     """
+    IGNORE_LIST = ["small_marker", "large_marker", "lego_duplo", "spatula", "nine_hole_peg_test"]
     GRASP_TF_NAME = "object_grasping"
     GRASP_BACK_SAFE = {"z": 0.05, "xy": 0.3}
     GRASP_BACK = {"z": 0.05, "xy": 0.1}
     HAND_PALM_OFFSET = 0.05  # hand_palm_linkは指の付け根なので、把持のために少しずらす必要がある
     HAND_PALM_Z_OFFSET = 0.075
     DETECT_CNT = 2
+    TROFAST_Y_OFFSET = 0.2
 
     def __init__(self):
         # 変数の初期化
@@ -82,7 +84,7 @@ class WrsMainController(object):
 
     def instruction_cb(self, msg):
         """
-        指示分を受信する
+        指示文を受信する
         """
         rospy.loginfo("instruction received. [%s]", msg.data)
         self.instruction_list.append(msg.data)
@@ -91,7 +93,7 @@ class WrsMainController(object):
         """
         検出結果を受信する
         """
-        rospy.loginfo("received [detect contact with %s]", msg.data)
+        rospy.loginfo("received [Collision detected with %s]", msg.data)
         self.detection_list.append(msg.data)
 
     def get_relative_coordinate(self, parent, child):
@@ -189,9 +191,13 @@ class WrsMainController(object):
         for obj in obj_list:
             info_str = "{:<15}({:.2%}, {:3d}, {:3d}, {:3d}, {:3d})\n".format(
                 obj.label, obj.score, obj.x, obj.y, obj.w, obj.h)
-            score = cls.calc_score_bbox(obj)
-            extracted.append({"bbox": obj, "score": score, "label": obj.label})
-            extract_str += "- score={:07.3f} ".format(score) + info_str
+            if obj.label in cls.IGNORE_LIST:
+                ignore_str += "- ignored  : " + info_str
+            else:
+                score = cls.calc_score_bbox(obj)
+                extracted.append({"bbox": obj, "score": score, "label": obj.label})
+                extract_str += "- extracted: {:07.3f} ".format(score) + info_str
+
         rospy.loginfo(extract_str + ignore_str)
 
         # つかむべきかのscoreが一番高い物体を返す
@@ -287,8 +293,7 @@ class WrsMainController(object):
 
     def exec_graspable_method(self, grasp_pos, label=""):
         """
-        posの位置によって把持方法を判定し実行する。task1a用
-        把持可能後半の判定が優先される
+        task1専用:posの位置によって把持方法を判定し実行する。
         """
         method = None
         graspable_y = 1.85  # これ以上奥は把持できない
@@ -336,109 +341,55 @@ class WrsMainController(object):
         """
         self.put_in_place("bin_b_place")
 
-    def execute_task1(self):
+    def pull_out_trofast(self, pos_x, pos_y, pos_z, yaw, pitch, roll):
         """
-        task1でスコア200点を目指し、かつオブジェクトとの衝突などを発生しないように実施する
+        trofastの引き出しを引き出す
+        NOTE:サンプル
+            self.pull_out_trofast(0.178, -0.29, 0.55, -90, 100, 0)
         """
-        rospy.loginfo("#### start Task 1 ####")
-        hsr_position = [
-            # ("floor_tall_table", "move_with_looking_floor"),
-            ("floor_long_table_l", "move_with_looking_floor"),
-            ("floor_long_table_c", "move_with_looking_floor"),
-            # ("floor_long_table_r", "move_with_looking_floor"),
-            # ("tall_table", "look_at_tall_table"),
-            # ("long_table_l", "look_at_tall_table"),
-            ("long_table_c", "look_at_tall_table"),
-            # ("long_table_r", "look_at_tall_table"),
-        ]
-
-        total_cnt = 0
-        for plc, look_at in hsr_position:
-            for _ in range(self.DETECT_CNT):
-                # 移動と視線指示
-                self.goto(plc)
-                self.change_pose(look_at)
-                gripper.command(0)
-
-                # 把持対象の有無チェック
-                detected_objs = self.get_latest_detection()
-                graspable_obj = self.get_most_graspable_obj(detected_objs.bboxes)
-                if graspable_obj is None:
-                    rospy.logwarn("Cannot determine object to grasp. Grasping is aborted.")
-                    continue
-                label = graspable_obj["label"]
-                grasp_bbox = graspable_obj["bbox"]
-
-                # 把持対象がある場合は把持関数実施
-                grasp_pos = self.get_grasp_coordinate(grasp_bbox)
-                self.change_pose("grasp_on_table")
-                self.exec_graspable_method(grasp_pos, label)
-                self.change_pose("all_neutral")
-
-                # binに入れる
-                if total_cnt % 2 == 0:
-                    self.into_bin_a()
-                else:
-                    self.into_bin_b()
-                total_cnt += 1
-
-    def execute_task2a(self):
-        """
-        task2aを実行する
-        """
-        rospy.loginfo("#### start Task 2a ####")
-        self.change_pose("move_with_looking_floor")
+        self.goto_raw([0.178, 0.8, -90])
+        self.change_pose("grasp_on_table")
+        # 手を伸ばす-把持-引く
+        gripper.command(1)
+        whole_body.move_end_effector_pose(
+            pos_x, pos_y + self.TROFAST_Y_OFFSET, pos_z, yaw, pitch, roll)
+        whole_body.move_end_effector_pose(
+            pos_x, pos_y, pos_z, yaw, pitch, roll)
         gripper.command(0)
-        self.change_pose("look_at_near_floor")
-        self.goto("standby_2a")
+        whole_body.move_end_effector_pose(
+            pos_x, pos_y + self.TROFAST_Y_OFFSET, pos_z, yaw, pitch, roll)
+        gripper.command(1)
 
-        # 物体検出結果の取得 [把持するbboxを決定する関数と同じ]
-        detected_objs = self.get_latest_detection()
-        grasp_bbox = self.get_most_graspable_bbox(detected_objs.bboxes)
+        self.change_pose("all_neutral")
 
-        # 落ちているブロックを避けて移動
-        self.execute_avoid_blocks()
-
-        self.goto("go_throw_2a")
-        whole_body.move_to_go()
-
-    def execute_task2b(self):
+    def push_in_trofast(self, pos_x, pos_y, pos_z, yaw, pitch, roll):
         """
-        task2bを実行する
+        trofastの引き出しを戻す
+        NOTE:サンプル
+            self.push_in_trofast(0.178, -0.29, 0.55, -90, 100, 0)
         """
-        rospy.loginfo("#### start Task 2b ####")
+        self.goto_raw([0.178, 0.8, -90])
+        self.change_pose("grasp_on_table")
+        pos_y = pos_y + 0.05
+        # 予備動作〜押し込む
+        whole_body.move_end_effector_pose(
+            pos_x, pos_y + self.TROFAST_Y_OFFSET * 1.5, pos_z, yaw, pitch, roll)
+        gripper.command(0)
+        whole_body.move_end_effector_pose(
+            pos_x, pos_y + self.TROFAST_Y_OFFSET, pos_z, yaw, pitch, roll)
+        whole_body.move_end_effector_pose(
+            pos_x, pos_y, pos_z, yaw, pitch, roll)
 
-        # 命令文を取得
-        if self.instruction_list:
-            latest_instruction = self.instruction_list[-1]
-            rospy.loginfo("recieved instruction: %s", latest_instruction)
-        else:
-            rospy.logwarn("instruction_list is None")
-            return
-
-        # 命令内容を解釈
-        target_obj, target_person = self.extract_target_obj_and_target_person(latest_instruction)
-
-        # 指定したオブジェクトを指定した配達先へ
-        if target_obj and target_person:
-            self.deliver_to_target(target_obj, target_person)
+        self.change_pose("all_neutral")
 
     @staticmethod
     def extract_target_obj_and_target_person(instruction):
         """
         指示文から対象となる物体名称を抽出する
         """
-        target_obj = None  # CHANGE1_ON_REL: target_obj = "apple"
-        target_person = None  # CHANGE1_ON_REL: target_person = "right"
+        target_obj = "apple"
+        target_person = "right"
 
-        # DEL_ON_REL_BEGIN
-        targets = instruction.split(" to ")
-        if len(targets) > 1:
-            target_obj = targets[0].strip()
-            target_person = targets[1].strip()
-        else:
-            rospy.logwarn("The instruction is wrong")
-        # DEL_ON_REL_END
         return target_obj, target_person
 
     def deliver_to_target(self, target_obj, target_person):
@@ -465,13 +416,7 @@ class WrsMainController(object):
 
         # 椅子の前に持っていく
         self.change_pose("move_with_looking_floor")
-        # CHANGE1_ON_REL: self.goto("chair_b")
-        # DEL_ON_REL_BEGIN
-        if "left" in target_person:
-            self.goto("chair_a")
-        elif "right" in target_person:
-            self.goto("chair_b")
-        # DEL_ON_REL_END
+        self.goto("chair_b")
         self.change_pose("deliver_to_human")
         rospy.sleep(10.0)
         gripper.command(1)
@@ -546,6 +491,91 @@ class WrsMainController(object):
             rospy.loginfo("select default waypoint")
 
         return x_line[currentstp]
+
+    def execute_task1(self):
+        """
+        task1を実行する
+        """
+        rospy.loginfo("#### start Task 1 ####")
+        hsr_position = [
+            # ("floor_tall_table", "move_with_looking_floor"),
+            ("tall_table", "look_at_tall_table"),
+            # ("floor_long_table_l", "move_with_looking_floor"),
+            # ("long_table_l", "look_at_tall_table"),
+            # ("floor_long_table_c", "move_with_looking_floor"),
+            # ("long_table_c", "look_at_tall_table"),
+            ("floor_long_table_r", "move_with_looking_floor"),
+            ("long_table_r", "look_at_tall_table"),
+        ]
+
+        total_cnt = 0
+        for plc, look_at in hsr_position:
+            for _ in range(self.DETECT_CNT):
+                # 移動と視線指示
+                self.goto(plc)
+                self.change_pose(look_at)
+                gripper.command(0)
+
+                # 把持対象の有無チェック
+                detected_objs = self.get_latest_detection()
+                graspable_obj = self.get_most_graspable_obj(detected_objs.bboxes)
+
+                if graspable_obj is None:
+                    rospy.logwarn("Cannot determine object to grasp. Grasping is aborted.")
+                    continue
+                label = graspable_obj["label"]
+                grasp_bbox = graspable_obj["bbox"]
+                rospy.loginfo("grasp the " + label)
+
+                # 把持対象がある場合は把持関数実施
+                grasp_pos = self.get_grasp_coordinate(grasp_bbox)
+                self.change_pose("grasp_on_table")
+                self.exec_graspable_method(grasp_pos, label)
+                self.change_pose("all_neutral")
+
+                # binに入れる
+                if total_cnt % 2 == 0:
+                    self.into_bin_a()
+                else:
+                    self.into_bin_b()
+                total_cnt += 1
+
+    def execute_task2a(self):
+        """
+        task2aを実行する
+        """
+        rospy.loginfo("#### start Task 2a ####")
+        self.change_pose("move_with_looking_floor")
+        gripper.command(0)
+        self.change_pose("look_at_near_floor")
+        self.goto("standby_2a")
+
+        # 落ちているブロックを避けて移動
+        self.execute_avoid_blocks()
+
+        self.goto("go_throw_2a")
+        whole_body.move_to_go()
+
+    def execute_task2b(self):
+        """
+        task2bを実行する
+        """
+        rospy.loginfo("#### start Task 2b ####")
+
+        # 命令文を取得
+        if self.instruction_list:
+            latest_instruction = self.instruction_list[-1]
+            rospy.loginfo("recieved instruction: %s", latest_instruction)
+        else:
+            rospy.logwarn("instruction_list is None")
+            return
+
+        # 命令内容を解釈
+        target_obj, target_person = self.extract_target_obj_and_target_person(latest_instruction)
+
+        # 指定したオブジェクトを指定した配達先へ
+        if target_obj and target_person:
+            self.deliver_to_target(target_obj, target_person)
 
     def run(self):
         """
