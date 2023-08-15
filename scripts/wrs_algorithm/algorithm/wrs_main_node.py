@@ -31,6 +31,7 @@ class WrsMainController(object):
     HAND_PALM_OFFSET = 0.05  # hand_palm_linkは指の付け根なので、把持のために少しずらす必要がある
     HAND_PALM_Z_OFFSET = 0.075
     DETECT_CNT = 2
+    DRAW_Y = 0.2
 
     def __init__(self):
         # 変数の初期化
@@ -92,7 +93,7 @@ class WrsMainController(object):
         """
         検出結果を受信する
         """
-        rospy.loginfo("received [Collision Detected with %s]", msg.data)
+        rospy.loginfo("received [Collision detected with %s]", msg.data)
         self.detection_list.append(msg.data)
 
     def get_relative_coordinate(self, parent, child):
@@ -340,26 +341,45 @@ class WrsMainController(object):
         """
         self.put_in_place("bin_b_place")
 
-    def pull_out_trofast_drawer(self):
+    def pull_out_trofast(self, pos_x, pos_y, pos_z, yaw, pitch, roll):
         """
         trofastの引き出しを引き出す
+        NOTE:サンプル
+            self.pull_out_trofast(0.178, -0.29, 0.55, -90, 100, 0)
         """
         self.goto_raw([0.178, 0.8, -90])
-        # 特定位置に手を伸ばす-把持-引く
         self.change_pose("grasp_on_table")
-        self.grasp_from_side(0.178, -0.28, 0.55, -90, 100, 0, "+y")
+        # 手を伸ばす-把持-引く
         gripper.command(1)
+        whole_body.move_end_effector_pose(
+            pos_x, pos_y + self.DRAW_Y, pos_z, yaw, pitch, roll)
+        whole_body.move_end_effector_pose(
+            pos_x, pos_y, pos_z, yaw, pitch, roll)
+        gripper.command(0)
+        whole_body.move_end_effector_pose(
+            pos_x, pos_y + self.DRAW_Y, pos_z, yaw, pitch, roll)
+        gripper.command(1)
+
         self.change_pose("all_neutral")
 
-    def push_in_trofast_drawer(self):
+    def push_in_trofast(self, pos_x, pos_y, pos_z, yaw, pitch, roll):
         """
         trofastの引き出しを戻す
+        NOTE:サンプル
+            self.push_in_trofast(0.178, -0.29, 0.55, -90, 100, 0)
         """
         self.goto_raw([0.178, 0.8, -90])
-        # 特定位置に手を伸ばす-押す
         self.change_pose("grasp_on_table")
-        self.grasp_from_side(0.178, -0.28, 0.55, -90, 100, 0, "+y")
-        gripper.command(1)
+        pos_y = pos_y + 0.05
+        # 予備動作〜押し込む
+        whole_body.move_end_effector_pose(
+            pos_x, pos_y + self.DRAW_Y * 1.5, pos_z, yaw, pitch, roll)
+        gripper.command(0)
+        whole_body.move_end_effector_pose(
+            pos_x, pos_y + self.DRAW_Y, pos_z, yaw, pitch, roll)
+        whole_body.move_end_effector_pose(
+            pos_x, pos_y, pos_z, yaw, pitch, roll)
+
         self.change_pose("all_neutral")
 
     @staticmethod
