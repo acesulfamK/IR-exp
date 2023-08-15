@@ -31,7 +31,7 @@ class WrsMainController(object):
     HAND_PALM_OFFSET = 0.05  # hand_palm_linkは指の付け根なので、把持のために少しずらす必要がある
     HAND_PALM_Z_OFFSET = 0.075
     DETECT_CNT = 2
-    DRAW_Y = 0.2
+    TROFAST_Y_OFFSET = 0.2
 
     def __init__(self):
         # 変数の初期化
@@ -191,12 +191,12 @@ class WrsMainController(object):
         for obj in obj_list:
             info_str = "{:<15}({:.2%}, {:3d}, {:3d}, {:3d}, {:3d})\n".format(
                 obj.label, obj.score, obj.x, obj.y, obj.w, obj.h)
-            if obj.label not in cls.IGNORE_LIST:
+            if obj.label in cls.IGNORE_LIST:
+                ignore_str += "- ignored  : " + info_str
+            else:
                 score = cls.calc_score_bbox(obj)
                 extracted.append({"bbox": obj, "score": score, "label": obj.label})
                 extract_str += "- extracted: {:07.3f} ".format(score) + info_str
-            else:
-                ignore_str += "- ignored  : " + info_str
 
         rospy.loginfo(extract_str + ignore_str)
 
@@ -352,12 +352,12 @@ class WrsMainController(object):
         # 手を伸ばす-把持-引く
         gripper.command(1)
         whole_body.move_end_effector_pose(
-            pos_x, pos_y + self.DRAW_Y, pos_z, yaw, pitch, roll)
+            pos_x, pos_y + self.TROFAST_Y_OFFSET, pos_z, yaw, pitch, roll)
         whole_body.move_end_effector_pose(
             pos_x, pos_y, pos_z, yaw, pitch, roll)
         gripper.command(0)
         whole_body.move_end_effector_pose(
-            pos_x, pos_y + self.DRAW_Y, pos_z, yaw, pitch, roll)
+            pos_x, pos_y + self.TROFAST_Y_OFFSET, pos_z, yaw, pitch, roll)
         gripper.command(1)
 
         self.change_pose("all_neutral")
@@ -373,10 +373,10 @@ class WrsMainController(object):
         pos_y = pos_y + 0.05
         # 予備動作〜押し込む
         whole_body.move_end_effector_pose(
-            pos_x, pos_y + self.DRAW_Y * 1.5, pos_z, yaw, pitch, roll)
+            pos_x, pos_y + self.TROFAST_Y_OFFSET * 1.5, pos_z, yaw, pitch, roll)
         gripper.command(0)
         whole_body.move_end_effector_pose(
-            pos_x, pos_y + self.DRAW_Y, pos_z, yaw, pitch, roll)
+            pos_x, pos_y + self.TROFAST_Y_OFFSET, pos_z, yaw, pitch, roll)
         whole_body.move_end_effector_pose(
             pos_x, pos_y, pos_z, yaw, pitch, roll)
 
