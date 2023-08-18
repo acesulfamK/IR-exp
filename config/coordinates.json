@@ -16,8 +16,8 @@
         "standby_2a": [2.5, 1.85, 90],
         "go_throw_2a": [2.0, 3.5, 90],
         "shelf": [2.3, 3.9, 90],
-        "chair_a": [0.7, 2.8, 180],
-        "chair_b": [0.7, 3.9, 180],
+        "person_a": [0.7, 2.8, 180],
+        "person_b": [0.7, 3.9, 180],
         "home": [0, 0.2, 0]
     },
     "routes": {
@@ -38,8 +38,8 @@
             "standby_2a",
             "go_throw_2a",
             "shelf",
-            "chair_a",
-            "chair_b",
+            "person_a",
+            "person_b",
             "home"
         ]
     }

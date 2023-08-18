@@ -113,7 +113,7 @@ class WrsMainController(object):
             rospy.logerr(log_str)
             return None
 
-    def goto(self, name):
+    def goto_name(self, name):
         """
         waypoint名で指定された場所に移動する
         """
@@ -125,12 +125,12 @@ class WrsMainController(object):
         rospy.logerr("unknown waypoint name [%s]", name)
         return False
 
-    def goto_raw(self, r_pos):
+    def goto_pos(self, pos):
         """
         waypoint名で指定された場所に移動する
         """
-        rospy.loginfo("go to [raw_pos](%.2f, %.2f, %.2f)", r_pos[0], r_pos[1], r_pos[2])
-        return omni_base.go_abs(r_pos[0], r_pos[1], r_pos[2])
+        rospy.loginfo("go to [raw_pos](%.2f, %.2f, %.2f)", pos[0], pos[1], pos[2])
+        return omni_base.go_abs(pos[0], pos[1], pos[2])
 
     def change_pose(self, name):
         """
@@ -149,7 +149,7 @@ class WrsMainController(object):
         """
         whole_body.move_to_go()
         for wp_name in self.coordinates["routes"]["test"]:
-            self.goto(wp_name)
+            self.goto_name(wp_name)
             rospy.sleep(1)
 
     def get_latest_detection(self):
@@ -322,7 +322,7 @@ class WrsMainController(object):
         指定場所に入れる事前位置に戻すまでのタスク
         """
         self.change_pose("move_with_looking_floor")
-        self.goto(place)
+        self.goto_name(place)
         self.change_pose("all_neutral")
         self.change_pose("put_in_bin")
         gripper.command(1)
@@ -345,9 +345,9 @@ class WrsMainController(object):
         """
         trofastの引き出しを引き出す
         NOTE:サンプル
-            self.pull_out_trofast(0.178, -0.29, 0.55, -90, 100, 0)
+            self.pull_out_trofast(0.178, -0.29, 0.75, -90, 100, 0)
         """
-        self.goto_raw([0.178, 0.8, -90])
+        self.goto_pos([0.178, 0.8, -90])
         self.change_pose("grasp_on_table")
         # 手を伸ばす-把持-引く
         gripper.command(1)
@@ -366,12 +366,12 @@ class WrsMainController(object):
         """
         trofastの引き出しを戻す
         NOTE:サンプル
-            self.push_in_trofast(0.178, -0.29, 0.55, -90, 100, 0)
+            self.push_in_trofast(0.178, -0.29, 0.75, -90, 100, 0)
         """
-        self.goto_raw([0.178, 0.8, -90])
+        self.goto_pos([0.178, 0.8, -90])
         self.change_pose("grasp_on_table")
         pos_y = pos_y + 0.05
-        # 予備動作〜押し込む
+        # 予備動作-押し込む
         whole_body.move_end_effector_pose(
             pos_x, pos_y + self.TROFAST_Y_OFFSET * 1.5, pos_z, yaw, pitch, roll)
         gripper.command(0)
@@ -386,7 +386,10 @@ class WrsMainController(object):
     def extract_target_obj_and_target_person(instruction):
         """
         指示文から対象となる物体名称を抽出する
+        NOTE: 関数は未完成です。
         """
+        if instruction is None:
+            return
         target_obj = "apple"
         target_person = "right"
 
@@ -397,7 +400,7 @@ class WrsMainController(object):
         棚で取得したものを人に渡す。
         """
         self.change_pose("move_with_looking_floor")
-        self.goto("shelf")
+        self.goto_name("shelf")
         self.change_pose("look_at_shelf")
 
         rospy.loginfo("target_obj: " + target_obj + "  target_person: " + target_person)
@@ -414,9 +417,10 @@ class WrsMainController(object):
         self.grasp_from_front_side(grasp_pos)
         self.change_pose("all_neutral")
 
-        # 椅子の前に持っていく
+        # target_personの前に持っていく
         self.change_pose("move_with_looking_floor")
-        self.goto("chair_b")
+        # TODO 配達先が固定されている
+        self.goto_name("person_b")
         self.change_pose("deliver_to_human")
         rospy.sleep(10.0)
         gripper.command(1)
@@ -434,7 +438,7 @@ class WrsMainController(object):
 
             waypoint = self.select_next_waypoint(i, pos_bboxes)
             rospy.loginfo(waypoint)
-            self.goto_raw(waypoint)
+            self.goto_pos(waypoint)
 
     def select_next_waypoint(self, currentstp, pos_bboxes):
         """
@@ -512,7 +516,7 @@ class WrsMainController(object):
         for plc, look_at in hsr_position:
             for _ in range(self.DETECT_CNT):
                 # 移動と視線指示
-                self.goto(plc)
+                self.goto_name(plc)
                 self.change_pose(look_at)
                 gripper.command(0)
 
@@ -548,12 +552,12 @@ class WrsMainController(object):
         self.change_pose("move_with_looking_floor")
         gripper.command(0)
         self.change_pose("look_at_near_floor")
-        self.goto("standby_2a")
+        self.goto_name("standby_2a")
 
         # 落ちているブロックを避けて移動
         self.execute_avoid_blocks()
 
-        self.goto("go_throw_2a")
+        self.goto_name("go_throw_2a")
         whole_body.move_to_go()
 
     def execute_task2b(self):
