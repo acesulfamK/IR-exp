@@ -376,8 +376,8 @@ class WrsMainController(object):
     def extract_target_obj_and_target_person(instruction):
         """
         指示文から対象となる物体名称を抽出する
-        TODO: 関数は未完成です。引数のinstructionを利用すること
         """
+        #TODO: 関数は未完成です。引数のinstructionを利用すること
         target_obj = "apple"
         target_person = "right"
 
@@ -407,7 +407,7 @@ class WrsMainController(object):
 
         # target_personの前に持っていく
         self.change_pose("move_with_looking_floor")
-        self.goto_name("person_b")    # TODO 配達先が固定されているので修正
+        self.goto_name("person_b")    # TODO: 配達先が固定されているので修正
         self.change_pose("deliver_to_human")
         rospy.sleep(10.0)
         gripper.command(1)
