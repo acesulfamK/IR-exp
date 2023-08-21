@@ -373,11 +373,12 @@ class WrsMainController(object):
         self.change_pose("all_neutral")
 
     @staticmethod
-    def extract_target_obj_and_target_person(instruction):
+    def extract_target_obj_and_person(instruction):
         """
         指示文から対象となる物体名称を抽出する
         """
         #TODO: 関数は未完成です。引数のinstructionを利用すること
+        rospy.loginfo("[extract_target_obj_and_person] instruction:"+  instruction)
         target_obj = "apple"
         target_person = "right"
 
@@ -563,7 +564,7 @@ class WrsMainController(object):
             return
 
         # 命令内容を解釈
-        target_obj, target_person = self.extract_target_obj_and_target_person(latest_instruction)
+        target_obj, target_person = self.extract_target_obj_and_person(latest_instruction)
 
         # 指定したオブジェクトを指定した配達先へ
         if target_obj and target_person:
