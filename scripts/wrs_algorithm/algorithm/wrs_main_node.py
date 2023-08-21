@@ -237,9 +237,9 @@ class WrsMainController(object):
         """
         把持の一連の動作を行う
 
-        Note: tall_tableに対しての予備動作を生成するときはpreliminary="-y"と設定することになる。
+        NOTE: tall_tableに対しての予備動作を生成するときはpreliminary="-y"と設定することになる。
         """
-        if preliminary not in ["+y", "-y", "+x", "-x"]:
+        if preliminary not in [ "+y", "-y", "+x", "-x" ]:
             raise RuntimeError("unnkown graps preliminary type [{}]".format(preliminary))
 
         rospy.loginfo("move hand to grasp (%.2f, %.2f, %.2f)", pos_x, pos_y, pos_z)
@@ -317,29 +317,17 @@ class WrsMainController(object):
         method(grasp_pos)
         return True
 
-    def put_in_place(self, place):
+    def put_in_place(self, place, into_pose):
         """
-        指定場所に入れる事前位置に戻すまでのタスク
+        指定場所に入れ、all_neutral姿勢を取る。
         """
         self.change_pose("move_with_looking_floor")
         self.goto_name(place)
         self.change_pose("all_neutral")
-        self.change_pose("put_in_bin")
+        self.change_pose(into_pose)
         gripper.command(1)
         rospy.sleep(5.0)
         self.change_pose("all_neutral")
-
-    def into_bin_a(self):
-        """
-        箱に入れる事前位置に戻すまでのタスク
-        """
-        self.put_in_place("bin_a_place")
-
-    def into_bin_b(self):
-        """
-        箱に入れる事前位置に戻すまでのタスク
-        """
-        self.put_in_place("bin_b_place")
 
     def pull_out_trofast(self, pos_x, pos_y, pos_z, yaw, pitch, roll):
         """
@@ -347,8 +335,9 @@ class WrsMainController(object):
         NOTE:サンプル
             self.pull_out_trofast(0.178, -0.29, 0.75, -90, 100, 0)
         """
-        self.goto_pos([0.178, 0.8, -90])
+        self.goto_name("stair_like_drawer")
         self.change_pose("grasp_on_table")
+        
         # 手を伸ばす-把持-引く
         gripper.command(1)
         whole_body.move_end_effector_pose(
@@ -368,9 +357,10 @@ class WrsMainController(object):
         NOTE:サンプル
             self.push_in_trofast(0.178, -0.29, 0.75, -90, 100, 0)
         """
-        self.goto_pos([0.178, 0.8, -90])
+        self.goto_name("stair_like_drawer")
         self.change_pose("grasp_on_table")
-        pos_y = pos_y + 0.05
+        pos_y += self.HAND_PALM_OFFSET
+
         # 予備動作-押し込む
         whole_body.move_end_effector_pose(
             pos_x, pos_y + self.TROFAST_Y_OFFSET * 1.5, pos_z, yaw, pitch, roll)
@@ -386,10 +376,8 @@ class WrsMainController(object):
     def extract_target_obj_and_target_person(instruction):
         """
         指示文から対象となる物体名称を抽出する
-        NOTE: 関数は未完成です。
+        TODO: 関数は未完成です。引数のinstructionを利用すること
         """
-        if instruction is None:
-            return
         target_obj = "apple"
         target_person = "right"
 
@@ -419,8 +407,7 @@ class WrsMainController(object):
 
         # target_personの前に持っていく
         self.change_pose("move_with_looking_floor")
-        # TODO 配達先が固定されている
-        self.goto_name("person_b")
+        self.goto_name("person_b")    # TODO 配達先が固定されているので修正
         self.change_pose("deliver_to_human")
         rospy.sleep(10.0)
         gripper.command(1)
@@ -440,10 +427,10 @@ class WrsMainController(object):
             rospy.loginfo(waypoint)
             self.goto_pos(waypoint)
 
-    def select_next_waypoint(self, currentstp, pos_bboxes):
+    def select_next_waypoint(self, current_stp, pos_bboxes):
         """
         waypoints から近い場所にあるものを除外し、最適なwaypointを返す。
-        x座標を原点に近い方からxa,xb,xcに分け、移動先を決定する(デフォルトは0.4間隔)
+        x座標を原点に近い方からxa,xb,xcに定義する。bboxを判断基準として移動先を決定する(デフォルトは0.4間隔)
         pos_bboxesは get_grasp_coordinate() 済みであること
         """
         interval = 0.45
@@ -451,20 +438,21 @@ class WrsMainController(object):
         pos_xb = pos_xa + interval
         pos_xc = pos_xb + interval
 
+        # xa配列はcurrent_stpに関係している
         waypoints = {
-            "xa": [[pos_xa, 2.5, 45], [pos_xa, 2.9, 45], [pos_xa, 3.3, 90]],
-            "xb": [[pos_xb, 2.5, 90], [pos_xb, 2.9, 90], [pos_xb, 3.3, 90]],
-            "xc": [[pos_xc, 2.5, 135], [pos_xc, 2.9, 135], [pos_xc, 3.3, 90]]
+            "xa": [ [pos_xa, 2.5, 45],[pos_xa, 2.9, 45],[pos_xa, 3.3, 90] ],
+            "xb": [ [pos_xb, 2.5, 90], [pos_xb, 2.9, 90], [pos_xb, 3.3, 90] ],
+            "xc": [ [pos_xc, 2.5, 135],   [pos_xc, 2.9, 135],  [pos_xc, 3.3, 90 ]]
         }
 
-        # 原点側からxa,xb,xcのラインに近い場合は候補から削除
+        # posがxa,xb,xcのラインに近い場合は候補から削除
         is_to_xa = True
         is_to_xb = True
         is_to_xc = True
         for bbox in pos_bboxes:
             pos_x = bbox.x
             rospy.loginfo("detected object obj.x = {:.2f}".format(bbox.x))
-            # NOTE ｙ座標次第で無視してよいオブジェクトもある。
+            # NOTE Hint:ｙ座標次第で無視してよいオブジェクトもある。
             if pos_x < pos_xa + (interval/2):
                 is_to_xa = False
                 rospy.loginfo("is_to_xa=False")
@@ -479,7 +467,7 @@ class WrsMainController(object):
                 continue
 
         x_line = None   # xa,xb,xcいずれかのリストが入る
-        # NOTE 優先的にxcに行く
+        # NOTE 優先的にxcに移動する
         if is_to_xc:
             x_line = waypoints["xc"]
             rospy.loginfo("select next waypoint_xc")
@@ -494,7 +482,7 @@ class WrsMainController(object):
             x_line = waypoints["xb"]
             rospy.loginfo("select default waypoint")
 
-        return x_line[currentstp]
+        return x_line[current_stp]
 
     def execute_task1(self):
         """
@@ -539,9 +527,9 @@ class WrsMainController(object):
 
                 # binに入れる
                 if total_cnt % 2 == 0:
-                    self.into_bin_a()
+                    self.put_in_place("bin_a_place", "put_in_bin")
                 else:
-                    self.into_bin_b()
+                    self.put_in_place("bin_b_place", "put_in_bin")
                 total_cnt += 1
 
     def execute_task2a(self):

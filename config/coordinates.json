@@ -9,6 +9,7 @@
         "floor_long_table_c": [0.7, 0.4, 90],
         "floor_long_table_r": [1.2, 0.4, 90],
         "drawer": [0.35, 0.2, -90],
+        "stair_like_drawer":[0.178, 0.8, -90],
         "bin_a": [2.4, 0.0, -90],
         "bin_a_place": [2.35, 0.0, -90],
         "bin_b": [2.7, 0.0, -90],
