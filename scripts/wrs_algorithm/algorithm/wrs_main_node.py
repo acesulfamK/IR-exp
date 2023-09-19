@@ -399,7 +399,7 @@ class WrsMainController(object):
     def select_next_waypoint(self, current_stp, pos_bboxes):
         """
         waypoints から近い場所にあるものを除外し、最適なwaypointを返す。
-        x座標を原点に近い方からxa,xb,xcに定義する。bboxを判断基準として移動先を決定する(デフォルトは0.4間隔)
+        x座標を原点に近い方からxa,xb,xcに定義する。bboxを判断基準として移動先を決定する(デフォルトは0.45間隔)
         pos_bboxesは get_grasp_coordinate() 済みであること
         """
         interval = 0.45
