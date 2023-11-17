@@ -10,6 +10,7 @@ import os
 from select import select
 import traceback
 from turtle import pos
+import math
 import rospy
 import rospkg
 import tf2_ros
@@ -18,7 +19,6 @@ from detector_msgs.srv import (
     SetTransformFromBBox, SetTransformFromBBoxRequest,
     GetObjectDetection, GetObjectDetectionRequest)
 from wrs_algorithm.util import omni_base, whole_body, gripper
-import math
 
 
 class WrsMainController(object):
@@ -37,11 +37,12 @@ class WrsMainController(object):
     def __init__(self):
         # 変数の初期化
         self.instruction_list = []
-        self.detection_list   = []
+        self.detection_list = []
 
         # configファイルの受信
         self.coordinates = self.load_json(self.get_path(["config", "coordinates.json"]))
-        self.poses       = self.load_json(self.get_path(["config", "poses.json"]))
+        self.poses  = self.load_json(self.get_path(["config", "poses.json"]))
+        self.categories = self.load_json(self.get_path(["config", "categories.json"]))
 
         # ROS通信関連の初期化
         tf_from_bbox_srv_name = "set_tf_from_bbox"
@@ -228,10 +229,11 @@ class WrsMainController(object):
         """
         指示文から対象となる物体名称を抽出する
         """
-        #TODO: 関数は未完成です。引数のinstructionを利用すること
         rospy.loginfo("[extract_target_obj_and_person] instruction:"+  instruction)
-        target_obj    = "apple"
-        target_person = "right"
+        words = instruction.split()
+        target_obj    = words[0] if words else None
+        target_person = words[-1] if words else None
+        target_person = "person_a" if target_person == "left" else "person_b"
 
         return target_obj, target_person
 
@@ -316,7 +318,6 @@ class WrsMainController(object):
     def put_in_place(self, place, into_pose):
         # 指定場所に入れ、all_neutral姿勢を取る。
         self.change_pose("look_at_near_floor")
-        a = "go_palce" # TODO 不要な変数
         self.goto_name(place)
         self.change_pose("all_neutral")
         self.change_pose(into_pose)
@@ -328,7 +329,6 @@ class WrsMainController(object):
         # trofastの引き出しを引き出す
         self.goto_name("stair_like_drawer")
         self.change_pose("grasp_on_table")
-        a = True  # TODO 不要な変数
         gripper.command(1)
         whole_body.move_end_effector_pose(x, y + self.TROFAST_Y_OFFSET, z, yaw, pitch, roll)
         whole_body.move_end_effector_pose(x, y, z, yaw, pitch, roll)
@@ -379,7 +379,7 @@ class WrsMainController(object):
 
         # target_personの前に持っていく
         self.change_pose("look_at_near_floor")
-        self.goto_name("person_b")    # TODO: 配達先が固定されているので修正
+        self.goto_name(target_person)
         self.change_pose("deliver_to_human")
         rospy.sleep(10.0)
         gripper.command(1)
@@ -392,8 +392,7 @@ class WrsMainController(object):
             bboxes = detected_objs.bboxes
             pos_bboxes = [self.get_grasp_coordinate(bbox) for bbox in bboxes]
             waypoint = self.select_next_waypoint(i, pos_bboxes)
-            # TODO メッセージを確認するためコメントアウトを外す
-            # rospy.loginfo(waypoint)
+            rospy.loginfo(waypoint)
             self.goto_pos(waypoint)
 
     def select_next_waypoint(self, current_stp, pos_bboxes):
@@ -460,7 +459,7 @@ class WrsMainController(object):
         rospy.loginfo("#### start Task 1 ####")
         hsr_position = [
             ("tall_table", "look_at_tall_table"),
-            ("near_long_table_l", "look_at_near_floor"),
+            # ("near_long_table_l", "look_at_near_floor"),
             # ("long_table_r", "look_at_long_table"),
         ]
 
@@ -481,9 +480,14 @@ class WrsMainController(object):
                     continue
                 label = graspable_obj["label"]
                 grasp_bbox = graspable_obj["bbox"]
-                # TODO ラベル名を確認するためにコメントアウトを外す
-                # rospy.loginfo("grasp the " + label)
+                rospy.loginfo("grasp the " + label)
 
+                for cat, items in self.categories.items():
+                    if label in items:
+                        category = cat
+                        break
+
+                print(category)                    
                 # 把持対象がある場合は把持関数実施
                 grasp_pos = self.get_grasp_coordinate(grasp_bbox)
                 self.change_pose("grasp_on_table")
@@ -529,7 +533,8 @@ class WrsMainController(object):
         target_obj, target_person = self.extract_target_obj_and_person(latest_instruction)
 
         # 指定したオブジェクトを指定した配達先へ
-        if target_obj and target_person:            self.deliver_to_target(target_obj, target_person)
+        if target_obj and target_person:
+            self.deliver_to_target(target_obj, target_person)
 
     def run(self):
         """
@@ -537,8 +542,8 @@ class WrsMainController(object):
         """
         self.change_pose("all_neutral")
         self.execute_task1()
-        self.execute_task2a()
-        self.execute_task2b()
+        # self.execute_task2a()
+        # self.execute_task2b()
 
 
 def main():
